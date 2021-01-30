@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 from astropy.io import fits
 
 
-from pfs.sacFileHandling import Logbook, constructFilelist
+from pfs.lam.sacFileHandling import Logbook, constructFilelist
 import pfs.imageAnalysis as imeas
 
 

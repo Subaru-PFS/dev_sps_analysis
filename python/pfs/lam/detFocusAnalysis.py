@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from pfs.detAnalysis import *
-from pfs.fileHandling import *
+from pfs.lam.detAnalysis import *
+from pfs.lam.fileHandling import *
 
-from pfs.sep import *
+from pfs.lam.sep import *
 
 def getAllImageQuality(filelist, peak_list, roi_size, com=False, doBck=False, doPlot=False, EE=[3,5], trackPeak=False, doFit=True, doLSF=False):
    

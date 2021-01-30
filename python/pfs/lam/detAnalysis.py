@@ -1,11 +1,11 @@
-from pfs.imageAnalysis import *
+from pfs.lam.imageAnalysis import *
 import scipy.interpolate
 import matplotlib.gridspec as gridspec
 from scipy import spatial
 from datetime import datetime
-from pfs.fileHandling import *
+from pfs.lam.fileHandling import *
 
-from pfs.sep import *
+from pfs.lam.sep import *
 
 
 def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], com=False, doPlot=False, scalePlot=False, doBck=False, doFit=True, doLSF=False):

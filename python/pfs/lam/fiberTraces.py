@@ -1,5 +1,5 @@
-from pfs.fileHandling import *
-from pfs.instrModelAlign import *
+from pfs.lam.fileHandling import *
+from pfs.lam.instrModelAlign import *
 import matplotlib.pyplot as plt
 from matplotlib import style
 import os

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta
 
-# from pfs.utils.dummyCableB import *
+# from pfs.lam.utils.dummyCableB import *
 
 
 # Exposure logbook class
