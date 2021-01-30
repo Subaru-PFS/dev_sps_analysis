@@ -1,18 +1,18 @@
 import getopt
 import sys
 import pandas as pd
-from pfs.detAnalysis import *
+from pfs.lam.detAnalysis import *
 import time
 
-from pfs.fileHandling import *
-from pfs.detFocusAnalysis import *
+from pfs.lam.fileHandling import *
+from pfs.lam.detFocusAnalysis import *
 #import os
 import lsst.daf.persistence as dafPersist
 import re
 from astropy.modeling import models, fitting
 from astropy.stats import gaussian_sigma_to_fwhm
-from pfs.opdb import *
-from pfs.misc import str2bool
+from pfs.lam.opdb import *
+from pfs.lam.misc import str2bool
 
 """
 def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50, threshold= 500, subpix=5, \
