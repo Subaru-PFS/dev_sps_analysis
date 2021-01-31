@@ -1,0 +1,7 @@
+setupRequired(pfs_pipe2d w.2020.48)
+setupRequired(pfs_utils)
+setupRequired(spt_operational_database 0.0.2)
+
+pathPrepend(PATH, ${PRODUCT_DIR}/bin)
+pathPrepend(PATH, ${PRODUCT_DIR}/scripts)
+pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
