@@ -181,15 +181,15 @@ def getSlitTF2(experimentId, com=False, doBck=False, doPlot=False, bck_expId=Non
 def getFocus(series, criteria, index, corrector=False, doPrint=False):
     if 'EE' in criteria:
         if corrector:
-            thfoc, parfit = imeas.fitgauss1D(series[index].as_matrix(), series[criteria].as_matrix())  
+            thfoc, parfit = imeas.fitgauss1D(series[index].values, series[criteria].values)  
         else:
-            thfoc = imeas.fitparabola(series[index].as_matrix(), series[criteria].as_matrix(), deg=15)  
+            thfoc = imeas.fitparabola(series[index].values, series[criteria].values, deg=15)  
             
     elif criteria=='fwhm':
-        thfoc = imeas.fitparabola(series[index].as_matrix(), series[criteria].as_matrix(), deg=3)  
+        thfoc = imeas.fitparabola(series[index].values, series[criteria].values, deg=3)  
         
     else:
-        thfoc, parfit = imeas.fitgauss1D(series[index].as_matrix(), series[criteria].as_matrix()) 
+        thfoc, parfit = imeas.fitgauss1D(series[index].values, series[criteria].values) 
     
     return thfoc.rename(index=str, columns={"x": index, "y": criteria})
 
@@ -217,7 +217,7 @@ def fitFocusData(cube, corrector=False, doPlot=False, index='fca_x'):
             raw = cube.query("experimentId==%d"%(experimentId))
             axes = fit.set_index(index)[criterias].plot(**kwargs)
             for i, criteria in enumerate(criterias):
-                axes[i].plot(raw[index].as_matrix(), raw[criteria].as_matrix(), 'o')
+                axes[i].plot(raw[index].values, raw[criteria].values, 'o')
                 
     return thfoc_data
 
