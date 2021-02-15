@@ -47,7 +47,7 @@ def slitFindPeak(data, radius=60, threshold=300, com=False, doPrint=False):
         print('peak has not been properly detected')
         return np.nan, np.nan
     else:
-        maxi = np.argmax([imeas.getEE(image=data, cx=peak['oid_x'], cy=peak['oid_y'], ee_size=20, roi_size=300) for peak in objlist])
+        maxi = np.argmax([imeas.getEE(image=data, cx=peak['oid_x'], cy=peak['oid_y'], ee_size=20, roi_size=300)[0] for peak in objlist])
     
     return objlist[maxi]['oid_x'], objlist[maxi]['oid_y']
 
