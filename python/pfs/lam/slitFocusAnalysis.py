@@ -200,8 +200,8 @@ def fitFocusData(cube, corrector=False, doPlot=False, index='fca_x'):
     for experimentId, series in cube.groupby('experimentId'):
         series = series.dropna()
         thfoc = getFocus(series, 'EE20', index, corrector=corrector)
-        for criteria in ['brightness', 'fwhm']:
-            thfoc[criteria] = getFocus(series, criteria, index, corrector=corrector)[criteria]
+        #for criteria in ['brightness', 'fwhm']:
+        #    thfoc[criteria] = getFocus(series, criteria, index, corrector=corrector)[criteria]
 
         thfoc['px'] = np.interp(thfoc[index], series[index], series['px'])
         thfoc['py'] = np.interp(thfoc[index], series[index], series['py'])
@@ -212,7 +212,8 @@ def fitFocusData(cube, corrector=False, doPlot=False, index='fca_x'):
 
     if doPlot:
         kwargs = dict(grid=True, figsize=(14,10), legend=True, subplots=True)
-        criterias = ['EE20', 'brightness', 'fwhm']
+        #criterias = ['EE20', 'brightness', 'fwhm']
+        criterias = ['EE20']
         for experimentId, fit in thfoc_data.groupby('experimentId'):
             raw = cube.query("experimentId==%d"%(experimentId))
             axes = fit.set_index(index)[criterias].plot(**kwargs)
@@ -226,7 +227,7 @@ def getFocusModel(fitdata, index='fca_x'):
     data = []
     for experimentId, series in fitdata.groupby('experimentId'):
         series = series.dropna()
-        for criteria in ['EE20', 'brightness', 'fwhm']:
+        for criteria in ['EE20']: #, 'brightness', 'fwhm']:
             ixmax = series[criteria].idxmax() if criteria !='fwhm' else series[criteria].idxmin()
             focus = series[index][ixmax]
             px = series.px[ixmax]
