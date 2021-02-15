@@ -5,7 +5,7 @@ from matplotlib import style
 import os
 from astropy.stats import sigma_clip
 from collections import OrderedDict
-import pfs.imageAnalysis as imeas
+import pfs.lam.imageAnalysis as imeas
 from scipy.interpolate import interp1d
 
 shape = (4176, 4096)

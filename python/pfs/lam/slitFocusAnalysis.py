@@ -7,7 +7,7 @@ from astropy.io import fits
 
 
 from pfs.lam.sacFileHandling import Logbook, constructFilelist
-import pfs.imageAnalysis as imeas
+import pfs.lam.imageAnalysis as imeas
 
 
 def slitFindPeak_save(data, radius=60, threshold=300, com=False, doPrint=False):
