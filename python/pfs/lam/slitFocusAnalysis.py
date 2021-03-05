@@ -60,7 +60,7 @@ def getPeakData(data, roi_size=150, doPlot=False, com=False, doBck=False, fwhm_r
               "py": np.nan,
               "oid_x": np.nan,
               "oid_y": np.nan,
-              "ee20" : np.nan
+              "EE20" : np.nan
              }
         return dict(obj)
     
