@@ -7,7 +7,7 @@ from astropy.io import fits
 
 
 from pfs.lam.sacFileHandling import Logbook, constructFilelist
-import pfs.imageAnalysis as imeas
+import pfs.lam.imageAnalysis as imeas
 
 
 def slitFindPeak_save(data, radius=60, threshold=300, com=False, doPrint=False):
@@ -47,7 +47,7 @@ def slitFindPeak(data, radius=60, threshold=300, com=False, doPrint=False):
         print('peak has not been properly detected')
         return np.nan, np.nan
     else:
-        maxi = np.argmax([imeas.getEE(image=data, cx=peak['oid_x'], cy=peak['oid_y'], ee_size=20, roi_size=300) for peak in objlist])
+        maxi = np.argmax([imeas.getEE(image=data, cx=peak['oid_x'], cy=peak['oid_y'], ee_size=20, roi_size=300)[0] for peak in objlist])
     
     return objlist[maxi]['oid_x'], objlist[maxi]['oid_y']
 
@@ -60,7 +60,7 @@ def getPeakData(data, roi_size=150, doPlot=False, com=False, doBck=False, fwhm_r
               "py": np.nan,
               "oid_x": np.nan,
               "oid_y": np.nan,
-              "ee20" : np.nan
+              "EE20" : np.nan
              }
         return dict(obj)
     
@@ -181,15 +181,15 @@ def getSlitTF2(experimentId, com=False, doBck=False, doPlot=False, bck_expId=Non
 def getFocus(series, criteria, index, corrector=False, doPrint=False):
     if 'EE' in criteria:
         if corrector:
-            thfoc, parfit = imeas.fitgauss1D(series[index].as_matrix(), series[criteria].as_matrix())  
+            thfoc, parfit = imeas.fitgauss1D(series[index].values, series[criteria].values)  
         else:
-            thfoc = imeas.fitparabola(series[index].as_matrix(), series[criteria].as_matrix(), deg=15)  
+            thfoc = imeas.fitparabola(series[index].values, series[criteria].values, deg=15)  
             
     elif criteria=='fwhm':
-        thfoc = imeas.fitparabola(series[index].as_matrix(), series[criteria].as_matrix(), deg=3)  
+        thfoc = imeas.fitparabola(series[index].values, series[criteria].values, deg=3)  
         
     else:
-        thfoc, parfit = imeas.fitgauss1D(series[index].as_matrix(), series[criteria].as_matrix()) 
+        thfoc, parfit = imeas.fitgauss1D(series[index].values, series[criteria].values) 
     
     return thfoc.rename(index=str, columns={"x": index, "y": criteria})
 
@@ -200,8 +200,8 @@ def fitFocusData(cube, corrector=False, doPlot=False, index='fca_x'):
     for experimentId, series in cube.groupby('experimentId'):
         series = series.dropna()
         thfoc = getFocus(series, 'EE20', index, corrector=corrector)
-        for criteria in ['brightness', 'fwhm']:
-            thfoc[criteria] = getFocus(series, criteria, index, corrector=corrector)[criteria]
+        #for criteria in ['brightness', 'fwhm']:
+        #    thfoc[criteria] = getFocus(series, criteria, index, corrector=corrector)[criteria]
 
         thfoc['px'] = np.interp(thfoc[index], series[index], series['px'])
         thfoc['py'] = np.interp(thfoc[index], series[index], series['py'])
@@ -212,12 +212,13 @@ def fitFocusData(cube, corrector=False, doPlot=False, index='fca_x'):
 
     if doPlot:
         kwargs = dict(grid=True, figsize=(14,10), legend=True, subplots=True)
-        criterias = ['EE20', 'brightness', 'fwhm']
+        #criterias = ['EE20', 'brightness', 'fwhm']
+        criterias = ['EE20']
         for experimentId, fit in thfoc_data.groupby('experimentId'):
             raw = cube.query("experimentId==%d"%(experimentId))
             axes = fit.set_index(index)[criterias].plot(**kwargs)
             for i, criteria in enumerate(criterias):
-                axes[i].plot(raw[index].as_matrix(), raw[criteria].as_matrix(), 'o')
+                axes[i].plot(raw[index].values, raw[criteria].values, 'o')
                 
     return thfoc_data
 
@@ -226,7 +227,7 @@ def getFocusModel(fitdata, index='fca_x'):
     data = []
     for experimentId, series in fitdata.groupby('experimentId'):
         series = series.dropna()
-        for criteria in ['EE20', 'brightness', 'fwhm']:
+        for criteria in ['EE20']: #, 'brightness', 'fwhm']:
             ixmax = series[criteria].idxmax() if criteria !='fwhm' else series[criteria].idxmin()
             focus = series[index][ixmax]
             px = series.px[ixmax]
