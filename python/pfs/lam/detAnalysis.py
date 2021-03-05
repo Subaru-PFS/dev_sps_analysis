@@ -10,6 +10,10 @@ from pfs.lam.sep import *
 
 
 def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], com=False, doPlot=False, scalePlot=False, doBck=False, doFit=True, doLSF=False):
+    """
+    Calulate Ensquared Energy in EExEE px for all peak given in peak_list for a given image
+    Returns a pandas Dataframe
+    """
 
     if type(image) is list and len(image) == 1 :
         image = image[0]
@@ -38,11 +42,7 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], com=False, doPlot=F
 
     mdata = pd.DataFrame(objlist)
     if doPlot :
-        plt_data = mdata[["peak", "fiber", "px", "py"]]
-        plt_data = plt_data.rename(columns={'px': 'X','py': 'Y'})
-
-        plotRoiPeak(image, plt_data, roi_size, scale=scalePlot)
-
+        plotRoiPeak(image, mdata, roi_size, scale=scalePlot)
 
     return mdata
 
