@@ -36,40 +36,68 @@ def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax
     fig.colorbar(im2, ax=ax2)
     plt.show()
 
-
-def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True):
+def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=False):
     if type(image) is str:     
         hdulist = fits.open(image, "readonly")
         image = hdulist[1].data
     
     plist = pd.read_csv(peak_list) if type(peak_list) is str else peak_list
 
-    plist = plist.sort_values(["X","Y"], ascending=[True,False])    
-    #peak_data = peak_data.reset_index()
-
-    nbfiber = len(plist.fiber.unique())
-    nbpeak = len(plist.peak.unique())
-    # have a list of fiber from 0 to nbfiber 
-    listfibertoplot = pd.DataFrame(plist.fiber.unique(), columns=["fiber"])
+#    plist = plist.sort_values(["X","Y"], ascending=[True,False])
     
-    print("#Fiber= %d and #peak= %d"%(nbfiber, nbpeak))
-    f, axarr = plt.subplots(nbpeak, nbfiber,  sharex='col', sharey='row',figsize=(12,8))
+    nbfiber = len(plist.fiber.unique())
+    nbwave = len(plist.wavelength.unique())
+    # have a list of fiber from 0 to nbfiber
+    listwavestoplot = pd.DataFrame(plist.wavelength.unique(), columns=["wavelength"])
+
+    listfiberstoplot = pd.DataFrame(plist.fiber.unique(), columns=["fiber"])
+    
+    print("#Fiber= %d and #wavelength= %d"%(nbfiber, nbwave))
+    f, axarr = plt.subplots(nbwave, nbfiber,  sharex='col', sharey='row',figsize=(12,8))
 #    print(axarr.shape)
     vmin=None
     vmax=None
     
-    for (peak, fiber), group in plist.groupby(['peak','fiber']):
-        k = int(round(peak))
-        i = listfibertoplot[listfibertoplot.fiber == fiber].index.tolist()[0]
-#        print(k,i)
-        indy = group["X"]
-        indx = group["Y"]
-        cut_data = image[int(indx-roi_size/2):int(indx+roi_size/2), int(indy-roi_size/2):int(indy+roi_size/2)]
-        if nbpeak == 1 and nbfiber == 1:
+    for (wave, fiber), group in plist.groupby(['wavelength','fiber']):
+        k = listwavestoplot[listwavestoplot.wavelength == wave].index.tolist()[0]
+        i = listfiberstoplot[listfiberstoplot.fiber == fiber].index.tolist()[0]
+        if verbose:
+            print(k,i)
+            print(f"px {group['px']}    py: {group['py']}")
+        #cut_data = image[int(indx-roi_size/2):int(indx+roi_size/2), int(indy-roi_size/2):int(indy+roi_size/2)]
+        cut_data = selectRoi(image, group["px"], group["py"], roi_size=roi_size)
+        if nbwave == 1 and nbfiber == 1:
+            axarr.set_title(f"{str(fiber)}, {str(wave)}")
             axarr.imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
         else:
-            axarr[nbpeak -1 -k, nbfiber - i -1].imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
+            #axarr[nbwave -1 -k, nbfiber - i -1].set_title(f"{fiber}, {wave:.2f}")
+            #axarr[nbwave -1 -k, nbfiber - i -1].label_outer()
+            axarr[nbwave -1 -k, nbfiber - i -1].imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
+#            axarr[nbwave -1 -k, nbfiber - i -1].set_ylabel(f"{wave:.2f}")
+#            axarr[nbwave -1 -k, nbfiber - i -1].set_xlabel(fiber)
+            axarr[nbwave -1 -k, nbfiber - i -1].grid(False)
+
+                
     f.subplots_adjust(hspace=0.5,wspace=0.5)
+
+    for ax, wave in zip(axarr[:,0], listwavestoplot.sort_index(ascending=False).wavelength.values) :
+            ax.set_ylabel(f"{wave:.2f}", rotation='horizontal', ha='right', fontsize=20)
+#            ax.set_xlabel(ax.get_xlabel(), rotation='vertical', fontsize=20)
+            ax.set_yticklabels('')
+            ax.set_xticklabels('')
+            ax.set_frame_on(False)
+    for ax, fiber in zip(axarr[-1,:], listfiberstoplot.sort_index(ascending=False).fiber.values):
+#            ax.set_ylabel(ax.get_ylabel(), rotation='horizontal', ha='right', fontsize=20)
+            ax.set_xlabel(fiber, rotation='vertical', fontsize=20)
+            ax.set_yticklabels('')
+            ax.set_xticklabels('')
+            ax.set_frame_on(False)
+
+    plt.gcf().set_facecolor('w')
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(savePlotFile+f"_roi_all.png")
+                  
     plt.show()
     
 
