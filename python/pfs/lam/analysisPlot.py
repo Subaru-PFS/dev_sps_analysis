@@ -2,6 +2,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pandas as pd
+from pfs.lam.imageAnalysis import selectRoi
 
 def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax=None, verbose=False):
     indx = cy
@@ -36,7 +37,7 @@ def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax
     fig.colorbar(im2, ax=ax2)
     plt.show()
 
-def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=False):
+def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=None, doSave=False):
     if type(image) is str:     
         hdulist = fits.open(image, "readonly")
         image = hdulist[1].data
@@ -44,6 +45,12 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
     plist = pd.read_csv(peak_list) if type(peak_list) is str else peak_list
 
 #    plist = plist.sort_values(["X","Y"], ascending=[True,False])
+    # Use X,Y when it the list of peak, px,py otherwise
+    ind_x = "px"
+    ind_y = "py"
+    if raw :
+        ind_x = "X"
+        ind_y = "Y"        
     
     nbfiber = len(plist.fiber.unique())
     nbwave = len(plist.wavelength.unique())
@@ -63,9 +70,9 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
         i = listfiberstoplot[listfiberstoplot.fiber == fiber].index.tolist()[0]
         if verbose:
             print(k,i)
-            print(f"px {group['px']}    py: {group['py']}")
+            print(f"px {group[ind_x]}    py: {group[ind_y]}")
         #cut_data = image[int(indx-roi_size/2):int(indx+roi_size/2), int(indy-roi_size/2):int(indy+roi_size/2)]
-        cut_data = selectRoi(image, group["px"], group["py"], roi_size=roi_size)
+        cut_data = selectRoi(image, group[ind_x], group[ind_y], roi_size=roi_size)
         if nbwave == 1 and nbfiber == 1:
             axarr.set_title(f"{str(fiber)}, {str(wave)}")
             axarr.imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
@@ -73,8 +80,8 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
             #axarr[nbwave -1 -k, nbfiber - i -1].set_title(f"{fiber}, {wave:.2f}")
             #axarr[nbwave -1 -k, nbfiber - i -1].label_outer()
             axarr[nbwave -1 -k, nbfiber - i -1].imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
-#            axarr[nbwave -1 -k, nbfiber - i -1].set_ylabel(f"{wave:.2f}")
-#            axarr[nbwave -1 -k, nbfiber - i -1].set_xlabel(fiber)
+            #axarr[nbwave -1 -k, nbfiber - i -1].set_ylabel(f"{wave:.2f}")
+            #axarr[nbwave -1 -k, nbfiber - i -1].set_xlabel(fiber)
             axarr[nbwave -1 -k, nbfiber - i -1].grid(False)
 
                 
