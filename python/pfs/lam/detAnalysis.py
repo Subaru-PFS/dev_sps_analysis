@@ -201,57 +201,6 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], mask_size=50,
 
 
 
-def removeClosePeak(df, dist=80, doPlot=False):
-    #from scipy import spatial
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.query_ball_point.html#scipy.spatial.KDTree.query_ball_point
-    
-    points = np.c_[df.px.ravel(), df.py.ravel()]
-    tree = spatial.KDTree(points)
-    
-    badpoints = []
-    for point in points:
-        result = tree.query_ball_point(point, dist)
-        # remove the point itself 
-        if len(result) > 1 : badpoints.append(result)
-    if doPlot:
-        points = np.asarray(points)
-        plt.plot(points[:,0], points[:,1], '.')
-        for badpoint in badpoints:
-            nearby_point = points[badpoint]
-            plt.plot(nearby_point[:,0], nearby_point[:,1], 'x')
-        plt.show()
-    
-    # set a flag "ignore" in the dataframe to identify the peak to be ignored
-
-    df["ignore"] = 0
-    for result in badpoints:
-        nearby_points = points[result]
-        for nearby_point in nearby_points:
-            df.loc[(df.px == nearby_point[0]) & (df.py == nearby_point[1]), "ignore"] = 1
-
-#    return df.where(df.ignore<1).dropna()
-    return df
-
-
-# def removeBrightPeak(df, threshold=45000, doPlot=False):
-#    if doPlot:
-#        ax= df.plot.scatter(x="px", y="py")
-#        df.where(df.brightness> threshold).plot.scatter(x="px", y="py", c="red", ax=ax)
-#    
-#    return df.where(df.brightness< threshold).dropna()
-
-def removeFluxPeak(df, fmin=2000, fmax=40000, doPlot=False):
-    if doPlot:
-        ax= df.plot.scatter(x="px", y="py")
-        df.where(df.brightness> fmax).plot.scatter(x="px", y="py", c="red", ax=ax)
-    
-    df.loc[(df.brightness< fmax) & (df.brightness> fmin), "ignore"] = 1
-
-#    return df.where((df.brightness< fmax) & (df.brightness> fmin)).dropna()
-    return df
-
-
-
 def getStatIM(dframe, par="EE5", thresold=0.9):
     z = dframe[par]
     zs = dframe[dframe[par]>thresold][par]
