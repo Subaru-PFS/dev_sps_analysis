@@ -1,3 +1,8 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import re
+
 def removeClosePeak(df, dist=80, doPlot=False):
     """
     Set a 'ignore' flag for points which closer to the distance <dist>
@@ -76,7 +81,7 @@ def filterPeakList(peaksList, arm, lamps):
     """
 
     peaks = pd.read_csv(peaksList) if type(peaksList) is str else peaksList
-    peaks = pd.read_csv(peaklist)
+    peaks = pd.read_csv(peaksList)
     peaks = peaks[peaks.arm == arm]
     peaks = peaks[(peaks.element.str.contains('|'.join(re.findall('[A-Z][^A-Z]*', "".join(lamps)))))]
     
