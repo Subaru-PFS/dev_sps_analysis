@@ -170,11 +170,13 @@ def EELsf(image, px, py, ee_size, roi_size=16, doBck=False):
 
     return np.sum(sroi)/np.sum(nlsf)
 
-def getPeakData(image, cx, cy, EE=None,roi_size=30,doPlot=False,com=False,doFit=True,\
+def getPeakData(image, cx, cy, EE=None,roi_size=30, seek_size=None, \
+                doPlot=False,com=False,doFit=True,\
                 doBck=False,doLSF=False,fwhm_radius=10,fwhm_method='gaussian',**kwargs):
+    
     image = openImage(image)
     
-    comx, comy = estimateCOM(image, cx, cy, roi_size=roi_size)
+    comx, comy = estimateCOM(image, cx, cy, roi_size=roi_size, seek_size=seek_size)
     if doFit :
         calc = iqcalc.IQCalc(None)
         [obj] = calc.evaluate_peaks([(comx-0.5,comy-0.5)], image, fwhm_radius=fwhm_radius,fwhm_method=fwhm_method,\

@@ -54,14 +54,16 @@ def getPeakDataSep2(image, cx, cy, EE=None, roi_size=30, mask_size=50, threshold
 
 
 
-def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50, threshold= 500, subpix=5, \
+def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50,  seek_size=None, threshold= 500, subpix=5, \
                             doPlot=False, doBck=True, nRows=5, **kwargs):
     if type(image) is str:
         hdulist = fits.open(image, "readonly")
         image = hdulist[1].data
     
     objlist=[]
-
+    if seek_size is not None:
+        (cx,cy) = estimateCOM(image, cx, cy, roi_size=seek_size, doBck=doBck, nRows=nRows)     
+        
     mask = createSepMask(image.shape, cx, cy, mask_size=mask_size)
     obj = sep.extract(image, threshold, mask=mask)
     if len(obj) == 0 :
