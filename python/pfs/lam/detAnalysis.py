@@ -190,7 +190,7 @@ def getFullImageQuality(image, peaksList, roi_size=16, imageInfo=None,\
 
     return data
 
-def ImageQualityToCsv(butler, dataId, peaksList, csv_path="./",\
+def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                       roi_size=16, EE=[3,5], \
                       com=True, doBck=True, doFit=True, doLSF=False, doSep=False,\
                       doPlot=False, doPrint=False, \
@@ -232,9 +232,9 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path="./",\
     csvName = f"Imquality_{cam}_Exp{experimentId}_{visit}_{date_time}.csv"
     if not os.path.exists(csv_path):
         os.makedirs(csv_path)
-    data.to_csv(csv_path+csvName)
+    data.to_csv(os.path.join(csv_path, csvName))
     if doPrint:
-        print(csv_path+csvName)
+        print(os.path.join(csv_path, csvName))
 
     return data
 
