@@ -10,7 +10,8 @@ from pfs.lam.opdb import get_Visit_Set_Id
 from pfs.lam.sep import *
 
 
-def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], com=False, doPlot=False, scalePlot=False, doBck=False, doFit=True, doLSF=False):
+def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
+                    com=False, doPlot=False, scalePlot=False, doBck=False, doFit=True, doLSF=False):
     """
     Calulate Ensquared Energy in EExEE px for all peak given in peak_list for a given image
     Returns a pandas Dataframe
@@ -31,7 +32,7 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], com=False, doPlot=F
         cy = row["Y"]
         wave = row["wavelength"] if "wavelength" in plist.columns else np.nan
         try:
-            obj = getPeakData(image, cx,cy, EE=EE, roi_size=roi_size, com=com, doBck=doBck, doFit=doFit, doLSF=doLSF)
+            obj = getPeakData(image, cx,cy, EE=EE, roi_size=roi_size, seek_size=seek_size, com=com, doBck=doBck, doFit=doFit, doLSF=doLSF)
             obj["peak"] = row["peak"]
             obj["fiber"] = row["fiber"]
             obj["wavelength"] = wave
@@ -51,7 +52,12 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], com=False, doPlot=F
 
 # get Encercled Energy using SEP
 
+<<<<<<< HEAD
 def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80, maxPeakFlux=40000, minPeakFlux=2000, doPlot=False, scalePlot=False, doBck=False, noEE=False):
+=======
+def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
+                          mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80, maxPeakFlux=40000, minPeakFlux=2000, doPlot=False, scalePlot=False, doBck=False, noEE=False):
+>>>>>>> dev-fmadec
 
     if type(image) is list and len(image) == 1 :
         image = image[0]
@@ -70,7 +76,11 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], mask_size=50,
             cy = row["Y"]
             try:
                 #obj = getFluxPeakDataSep(image, cx,cy, EE=EE, roi_size=roi_size,mask_size=mask_size, subpix=subpix, doBck=doBck)
+<<<<<<< HEAD
                 obj = getPeakDataSep(image, cx,cy, EE=EE, roi_size=roi_size,mask_size=mask_size,\
+=======
+                obj = getPeakDataSep(image, cx,cy, EE=EE, roi_size=roi_size, seek_size=seek_size, mask_size=mask_size,\
+>>>>>>> dev-fmadec
                                      subpix=subpix, doBck=doBck)
                 obj["cx"] = cx
                 obj["cy"] = cy
@@ -120,7 +130,11 @@ def getStatIM(dframe, par="EE5", thresold=0.9):
 
 
     
+<<<<<<< HEAD
 def getFullImageQuality(image, peaksList, roi_size=16, imageInfo=None,\
+=======
+def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo=None,\
+>>>>>>> dev-fmadec
                       com=True, doBck=True, EE=[3,5], doFit=True, doLSF=False, doSep=False,\
                       doPlot=False, doPrint=False, csv_path=None, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
@@ -131,7 +145,12 @@ def getFullImageQuality(image, peaksList, roi_size=16, imageInfo=None,\
     imageInfo must a dict: dict(arm="b", spectrograph=2, visit=1234, filename="visit_file_path")
     Returns a pandas Dataframe
     """
+<<<<<<< HEAD
     data = getImageQuality(image, peaksList, roi_size=roi_size, EE=EE, com=com, doPlot=doPlot, doBck=doBck, doFit=doFit, doLSF=doLSF)
+=======
+    data = getImageQuality(image, peaksList, roi_size=roi_size, seek_size=seek_size, EE=EE, com=com, \
+                           doPlot=doPlot, doBck=doBck, doFit=doFit, doLSF=doLSF)
+>>>>>>> dev-fmadec
     if doSep:
         dsep = getImageEncerclEnergy(image, peak_list, roi_size=roi_size, EE=EE,\
         mask_size=mask_size, threshold= threshold, subpix = subpix ,\
@@ -190,8 +209,13 @@ def getFullImageQuality(image, peaksList, roi_size=16, imageInfo=None,\
 
     return data
 
+<<<<<<< HEAD
 def ImageQualityToCsv(butler, dataId, peaksList, csv_path="./",\
                       roi_size=16, EE=[3,5], \
+=======
+def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
+                      roi_size=16, EE=[3,5], seek_size=None,\
+>>>>>>> dev-fmadec
                       com=True, doBck=True, doFit=True, doLSF=False, doSep=False,\
                       doPlot=False, doPrint=False, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
@@ -220,7 +244,11 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path="./",\
     imageInfo.update(filename=calexfilePath)    
     
     data = getFullImageQuality(exp.image.array, peaksList, imageInfo=imageInfo,\
+<<<<<<< HEAD
                       roi_size=roi_size, EE=EE, \
+=======
+                      roi_size=roi_size, EE=EE, seek_size=seek_size,\
+>>>>>>> dev-fmadec
                       com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,\
                       doPlot=doPlot, doPrint=doPrint, \
                       mask_size=mask_size, threshold= threshold, subpix = subpix , maxPeakDist=maxPeakDist,\
@@ -232,9 +260,15 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path="./",\
     csvName = f"Imquality_{cam}_Exp{experimentId}_{visit}_{date_time}.csv"
     if not os.path.exists(csv_path):
         os.makedirs(csv_path)
+<<<<<<< HEAD
     data.to_csv(csv_path+csvName)
     if doPrint:
         print(csv_path+csvName)
+=======
+    data.to_csv(os.path.join(csv_path, csvName))
+    if doPrint:
+        print(os.path.join(csv_path, csvName))
+>>>>>>> dev-fmadec
 
     return data
 
