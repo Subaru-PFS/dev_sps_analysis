@@ -63,3 +63,21 @@ def removeOnePeak(df, px=None, py=None, thresPix =3, peak=None, fiber=None, doPl
 #    return df.where((df.brightness< fmax) & (df.brightness> fmin)).dropna()
     return df
 
+def filterPeakList(peaksList, arm, lamps):
+    """
+    Filter the input list of peaks(lines)
+    peaksList : 'str' or dataFrame
+    arm : 'str'
+            b,r,m,n
+    lamps: 'str'
+            hgar, ne
+    
+    return dataFrame with list of peaks for arm and lamp selected
+    """
+
+    peaks = pd.read_csv(peaksList) if type(peaksList) is str else peaksList
+    peaks = pd.read_csv(peaklist)
+    peaks = peaks[peaks.arm == arm]
+    peaks = peaks[(peaks.element.str.contains('|'.join(re.findall('[A-Z][^A-Z]*', "".join(lamps)))))]
+    
+    return peaks
