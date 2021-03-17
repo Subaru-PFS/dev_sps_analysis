@@ -2,6 +2,7 @@
 ## misceallaneous or utils function
 ##
 
+import numpy as np
 
 # str2bool : see https://cmsdk.com/python/parsing-boolean-values-with-argparse.html
 # useful for argparse 
