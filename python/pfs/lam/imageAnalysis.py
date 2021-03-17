@@ -131,7 +131,16 @@ def selectRoi(image, cx, cy, roi_size, doBck=False, nRows=5, doPlot=False):
             
     return roi
 
-def estimateCOM(image, cx, cy, roi_size=30, doBck=True, nRows=5):
+def estimateCOM(image, cx, cy, roi_size=30, doBck=True, nRows=5, seek_size=None):
+    """
+    estimate center of mass 
+    if seek_size is given, recentration will be tried using the seek_size
+    if doBck = True it used the rRowns outside of the roi_size to evaluate the bck level and substract it to the roi sub_image
+    Return centroid of the center of mass in px
+    """
+    if seek_size is not None:
+        (cx,cy) = estimateCOM(image, cx, cy, roi_size=seek_size, doBck=doBck, nRows=nRows)       
+    
     indx = int(cy)
     indy = int(cx)
     half = int(roi_size/2)
@@ -161,11 +170,13 @@ def EELsf(image, px, py, ee_size, roi_size=16, doBck=False):
 
     return np.sum(sroi)/np.sum(nlsf)
 
-def getPeakData(image, cx, cy, EE=None,roi_size=30,doPlot=False,com=False,doFit=True,\
+def getPeakData(image, cx, cy, EE=None,roi_size=30, seek_size=None, \
+                doPlot=False,com=False,doFit=True,\
                 doBck=False,doLSF=False,fwhm_radius=10,fwhm_method='gaussian',**kwargs):
+    
     image = openImage(image)
     
-    comx, comy = estimateCOM(image, cx, cy, roi_size=roi_size)
+    comx, comy = estimateCOM(image, cx, cy, roi_size=roi_size, seek_size=seek_size)
     if doFit :
         calc = iqcalc.IQCalc(None)
         [obj] = calc.evaluate_peaks([(comx-0.5,comy-0.5)], image, fwhm_radius=fwhm_radius,fwhm_method=fwhm_method,\

@@ -1,7 +1,11 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 from datetime import datetime
+import pandas as pd
+import numpy as np
+from matplotlib.colors import LogNorm
 
+from pfs.lam.imageAnalysis import selectRoi, getRois
 
 def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax=None, verbose=False):
     indx = cy
@@ -36,6 +40,229 @@ def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax
     fig.colorbar(im2, ax=ax2)
     plt.show()
 
+def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=None, doSave=False):
+    if type(image) is str:     
+        hdulist = fits.open(image, "readonly")
+        image = hdulist[1].data
+    
+    plist = pd.read_csv(peak_list) if type(peak_list) is str else peak_list
+
+#    plist = plist.sort_values(["X","Y"], ascending=[True,False])
+    # Use X,Y when it the list of peak, px,py otherwise
+    ind_x = "px"
+    ind_y = "py"
+    if raw :
+        ind_x = "X"
+        ind_y = "Y"        
+    
+    nbfiber = len(plist.fiber.unique())
+    nbwave = len(plist.wavelength.unique())
+    # have a list of fiber from 0 to nbfiber
+    listwavestoplot = pd.DataFrame(plist.wavelength.unique(), columns=["wavelength"])
+
+    listfiberstoplot = pd.DataFrame(plist.fiber.unique(), columns=["fiber"])
+    
+    print("#Fiber= %d and #wavelength= %d"%(nbfiber, nbwave))
+    f, axarr = plt.subplots(nbwave, nbfiber,  sharex='col', sharey='row',figsize=(12,8))
+#    print(axarr.shape)
+    vmin=None
+    vmax=None
+    
+    for (wave, fiber), group in plist.groupby(['wavelength','fiber']):
+        k = listwavestoplot[listwavestoplot.wavelength == wave].index.tolist()[0]
+        i = listfiberstoplot[listfiberstoplot.fiber == fiber].index.tolist()[0]
+        if verbose:
+            print(k,i)
+            print(f"px {group[ind_x]}    py: {group[ind_y]}")
+        #cut_data = image[int(indx-roi_size/2):int(indx+roi_size/2), int(indy-roi_size/2):int(indy+roi_size/2)]
+        cut_data = selectRoi(image, group[ind_x], group[ind_y], roi_size=roi_size)
+        if nbwave == 1 and nbfiber == 1:
+            axarr.set_title(f"{str(fiber)}, {str(wave)}")
+            axarr.imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
+        else:
+            #axarr[nbwave -1 -k, nbfiber - i -1].set_title(f"{fiber}, {wave:.2f}")
+            #axarr[nbwave -1 -k, nbfiber - i -1].label_outer()
+            axarr[nbwave -1 -k, nbfiber - i -1].imshow(cut_data,interpolation="none", origin="lower", vmin=vmin, vmax=vmax)
+            #axarr[nbwave -1 -k, nbfiber - i -1].set_ylabel(f"{wave:.2f}")
+            #axarr[nbwave -1 -k, nbfiber - i -1].set_xlabel(fiber)
+            axarr[nbwave -1 -k, nbfiber - i -1].grid(False)
+
+                
+    f.subplots_adjust(hspace=0.5,wspace=0.5)
+
+    for ax, wave in zip(axarr[:,0], listwavestoplot.sort_index(ascending=False).wavelength.values) :
+            ax.set_ylabel(f"{wave:.2f}", rotation='horizontal', ha='right', fontsize=20)
+#            ax.set_xlabel(ax.get_xlabel(), rotation='vertical', fontsize=20)
+            ax.set_yticklabels('')
+            ax.set_xticklabels('')
+            ax.set_frame_on(False)
+    for ax, fiber in zip(axarr[-1,:], listfiberstoplot.sort_index(ascending=False).fiber.values):
+#            ax.set_ylabel(ax.get_ylabel(), rotation='horizontal', ha='right', fontsize=20)
+            ax.set_xlabel(fiber, rotation='vertical', fontsize=20)
+            ax.set_yticklabels('')
+            ax.set_xticklabels('')
+            ax.set_frame_on(False)
+
+    plt.gcf().set_facecolor('w')
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(savePlotFile+f"_roi_all.png")
+                  
+    plt.show()
+    
+
+def plotImageQuality(dframe, vmin=-1,vmax=-1, par="EE3", hist=None, filelist=None, com=False, doSave=False, imgPath="/home/pfs/shared/Pictures/" ):
+    
+    # select peak center 
+    # default x , y are objx and objy, but if it is the center of Mass it is oid_x and oid_y
+#    x = dframe["objx"]
+#    y = dframe["objy"]
+#    if com :
+#        x = dframe["oid_x"]
+#        y = dframe["oid_y"]
+
+    ## should now be px, py which are affected during calculation according com or not
+    x = dframe["px"]
+    y = dframe["py"]    
+    
+    z = dframe[par]
+#    stat = 'ECE5' if par == 'ECE5' else 'EE5'
+    stat = par
+    xs = dframe[dframe[stat]>0.90].px
+    ys = dframe[dframe[stat]>0.90].py
+    zs = dframe[dframe[stat]>0.90][stat]
+
+    print("%.f %% %s peaks >0.90"%(100*len(zs)/len(z),stat))
+    # Set up a regular grid of interpolation points
+    xi, yi = np.linspace(x.min(), x.max(), 100), np.linspace(y.min(), y.max(), 100)
+    xi, yi = np.meshgrid(xi, yi)
+
+    # Interpolate
+    rbf = scipy.interpolate.Rbf(x, y, z, function='linear')
+    zi = rbf(xi, yi)
+
+    if vmin == -1 :
+        vmin = z.min()
+    if vmax == -1 :
+        vmax = z.max()
+    if hist is not None:
+        #fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+        fig = plt.figure(figsize=(16, 8))
+        gs = gridspec.GridSpec(1, 3,
+ #                      width_ratios=[3,1],
+ #                      height_ratios=[1,1]
+                       )
+        ax1 = plt.subplot(gs[0,:2])
+        ax2 = plt.subplot(gs[0,2])
+        im = ax1.imshow(zi, vmin=vmin, vmax=vmax, origin='lower',
+                   extent=[x.min(), x.max(), y.min(), y.max()])
+        ax1.scatter(x, y, c=z, vmin=vmin, vmax=vmax)
+        ax1.set_title(par)
+        ax1.set_xlim([0,4095])
+        ax1.set_ylim([0,4175])
+        fig.colorbar(im, ax=ax1, shrink=1)
+        dframe[hist].plot.hist(ax=ax2, bins=20)
+        ax2.set_title("Histogram")
+        if filelist is not(None):
+            fig.suptitle(getFileInfo(filelist))
+        
+    else : 
+        fig = plt.figure(figsize=(8, 8))
+
+        plt.imshow(zi, vmin=vmin, vmax=vmax, origin='lower',
+                   extent=[x.min(), x.max(), y.min(), y.max()])
+        plt.scatter(x, y, c=z, vmin=vmin, vmax=vmax)
+        
+        plt.colorbar(shrink=0.65)
+        plt.scatter(xs, ys, c="r", marker="x")
+
+        plt.xlim(0,4095)
+        plt.ylim(0,4175)
+        if filelist is not(None):
+            plt.title(getFileInfo(filelist))
+          
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(os.path.join(imgPath,\
+            f"SM1_ImQual_{filelist.cam[0]}_EXP{filelist.experimentId[0]}_{par}_{filelist.obsdate[0]}.png"))  
+        plt.show()
+
+
+def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, savePlotFile=None, com=False, doSave=False, title=None ):
+    # select peak center 
+    # default x , y are objx and objy, but if it is the center of Mass it is oid_x and oid_y
+#    x = dframe["objx"]
+#    y = dframe["objy"]
+#    if com :
+#        x = dframe["oid_x"]
+#        y = dframe["oid_y"]
+
+    ## should now be px, py which are affected during calculation according com or not
+    x = dframe["px"]
+    y = dframe["py"]   
+    
+    z = dframe[par]
+    
+    #    stat = 'ECE5' if par == 'ECE5' else 'EE5'
+    val = 0.5 if par == "EE3" else 0.9
+
+    stat = par
+    xs = dframe[dframe[stat]>val].px
+    ys = dframe[dframe[stat]>val].py
+    zs = dframe[dframe[stat]>val][stat]
+
+    statEE = f"{100*len(zs)/len(z):.1f}% of peak have a {par} > {val}"
+        
+    if vmin == -1 :
+        vmin = z.min()
+    if vmax == -1 :
+        vmax = z.max()
+    fact = 100
+    if par == "brightness":
+        fact = 1./100
+    
+    if hist is not None:
+        #fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+        fig = plt.figure(figsize=(16, 8))
+        gs = gridspec.GridSpec(1, 3,
+    #                      width_ratios=[3,1],
+    #                      height_ratios=[1,1]
+                       )
+        ax1 = plt.subplot(gs[0,:2])
+        ax2 = plt.subplot(gs[0,2])
+        im = ax1.scatter(x, y, c=z, s= z*fact, vmin=vmin, vmax=vmax)
+        ax1.set_title(par)
+        ax1.set_xlim([0,4095])
+        ax1.set_ylim([0,4175])
+        plt.colorbar(im,ax=ax1,shrink=1)
+
+        dframe[hist].plot.hist(ax=ax2, bins=20)
+        val = 0.5 if par == "EE3" else 0.9
+        ax2.axvline(x=val, color='k')
+        ax2.set_title("Histogram")
+        ax2.set_xlim(vmin,vmax)
+        if title is not(None):
+            fig.suptitle(title+"\n"+statEE)
+    else:
+        fig = plt.figure(figsize=(10, 8))
+
+        plt.scatter(x, y, c= z, s= z*fact, vmin=vmin, vmax=vmax)
+        plt.colorbar(shrink=1)
+        plt.xlim(0,4095)
+        plt.ylim(0,4175)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+
+        plt.show()
+        if title is not(None):
+            fig.suptitle(title+"\n"+statEE)
+          
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(savePlotFile+f"_{par}.png", bbox_inches = "tight" )
+        plt.show()
+
+        
 
 
 def plot_one_group(piston_imdata, wave, fiber, experimentId, plot_path, criteria="EE5", doSave=False) :
