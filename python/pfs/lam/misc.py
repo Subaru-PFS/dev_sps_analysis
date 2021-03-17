@@ -12,3 +12,12 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+    
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
+
+# def find_nearest(X, value):
+#    return X[np.unravel_index(np.argmin(np.abs(X - value)), X.shape)]

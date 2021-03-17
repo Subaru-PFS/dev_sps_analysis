@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import pandas as pd
+from pfs.lam.misc import find_nearest
 
 class zemax():
     def __init__(self, cam, filemodel=None, test=False):
@@ -76,15 +77,6 @@ def pix2wave2(y,fiber,model_file):
     zemodel = pd.read_pickle(model_file)
     wave = np.polyval(zemodel.xs(fiber).p2w_cy, y)
     return wave
-
-
-def find_nearest(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return array[idx]
-
-# def find_nearest(X, value):
-#    return X[np.unravel_index(np.argmin(np.abs(X - value)), X.shape)]
 
 
 def GetRollCU(df, doPrint=False):
