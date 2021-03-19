@@ -16,8 +16,8 @@ class Logbook:
     try:
         engine=os.environ['ENGINE_PFS_PATH']
     except:
-#        engine = '///data/ait/experimentLog.db'
-        engine = '///data/drp/fmadec/experimentLog_sm2.db'
+        engine = '///data/ait/experimentLog.db'
+#        engine = '///data/drp/fmadec/experimentLog_sm2.db'
 
     
     @staticmethod
