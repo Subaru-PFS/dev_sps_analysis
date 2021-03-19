@@ -280,13 +280,14 @@ def neighbor_outlier_filter(df, column, thres, absolute=False):
     This flag can then be used to filter the data:
     df[df.<column>_nbh_flag] return filtered Dataframe so values that are greater than the threshold
     """
-    df.loc[:,f"{column}_nbh_diff"] = df[column] - (df[column].shift(-1) + df[column].shift(1))/2 
-    df[f"{column}_nbh_diff"].fillna(0, inplace=True)
-    df[f"{column}_nbh_diff"].iloc[0] = (df[column] - df[column].shift(-1)).iloc[0]
-    df[f"{column}_nbh_diff"].iloc[-1] = (df[column] - df[column].shift(1)).iloc[-1]
+    dfc = df.copy()
+    dfc.loc[:,f"{column}_nbh_diff"] = dfc[column] - (dfc[column].shift(-1) + dfc[column].shift(1))/2 
+    dfc[f"{column}_nbh_diff"].fillna(0, inplace=True)
+    dfc[f"{column}_nbh_diff"].iloc[0] = (dfc[column] - dfc[column].shift(-1)).iloc[0]
+    dfc[f"{column}_nbh_diff"].iloc[-1] = (dfc[column] - dfc[column].shift(1)).iloc[-1]
     if absolute:
-        df.loc[:,f"{column}_nbh_flag"] = (abs(df[f"{column}_nbh_diff"])<abs(thres))
+        dfc.loc[:,f"{column}_nbh_flag"] = (abs(dfc[f"{column}_nbh_diff"])<abs(thres))
     else:
-        df.loc[:,f"{column}_nbh_flag"] = (df[f"{column}_nbh_diff"]> thres)
+        dfc.loc[:,f"{column}_nbh_flag"] = (dfc[f"{column}_nbh_diff"]> thres)
         
-    return df
+    return dfc
