@@ -1,8 +1,206 @@
 # -*- coding: utf-8 -*-
 from pfs.lam.detAnalysis import *
 from pfs.lam.fileHandling import *
+from pfs.lam.imageAnalysis import parabola
 
 from pfs.lam.sep import *
+
+
+# Extending Pandas Dataframe for thFocus fit data
+
+@pd.api.extensions.register_dataframe_accessor("thFocus")
+class thFocusAccessor:
+    def __init__(self, pandas_obj):
+        self._obj = pandas_obj
+        
+    @staticmethod
+    def _validate(obj):
+        # verify there is a column latitude and a column longitude
+        if "focus" not in obj.columns or "value" not in obj.columns:
+            raise AttributeError("Must have 'focus' and 'value'.")
+    @property
+    def vline(self):
+        return dict(x=self._obj.focus, ymin=0, ymax=self._obj.value)
+
+    @property
+    def fitdata(self):
+        fit_function = self._obj.fit_function.values[0]
+        xmin = self._obj.fit_xmin
+        xmax = self._obj.fit_xmax
+        newx = np.linspace(xmin, xmax, 100)
+        best = self._obj.focus.values[0]
+        value = self._obj.value.values[0]
+        width = self._obj.width.values[0]
+        
+        if fit_function == "thFocus_Gaussian":
+            return newx, thFocus_Gaussian(newx, best, value, width)
+        elif fit_function == "thFocus_Parabola":
+            return newx, thFocus_Parabola(newx, best, value, width)
+
+# Class to create DataFrame that contains thfocus fit data
+        
+class ThFocusDF(pd.DataFrame):
+    def __init__(self, focus, value, width, fit_function, fit_xmin, fit_xmax):
+        pd.DataFrame.__init__(self, data=[(focus, value, width, fit_function, fit_xmin, fit_xmax)],\
+                              columns=["focus", "value", "width", "fit_function", "fit_xmin", "fit_xmax"])
+        
+def thFocus_Gaussian(motor_piston, motor_peak, ee_peak, width):
+    """
+    Gaussian curve used for Through Focus analysis
+    """
+    return ee_peak * np.exp(-np.power( (motor_piston -  motor_peak) / width, 2.))
+
+
+def fit_thFocus_Gaussian(x, y, width=None, max_value=None):
+    """
+    Run the fit of the thFocus_Gaussian
+    Estimate initial parameter
+    if width and/or max_value is given they are pass as a fixed value and thus not part of optimisation parameters
+    run curve_fit
+    return a DataFrame as defined by ThFocusDF class
+    """
+    ee0 = np.max(y)
+    motor0 = x[np.argmax(y)]
+    
+ 
+    # width
+    half_pos = x[(np.abs(y - ee0/2)).argmin()]
+    width0 = 2 * np.abs((motor0 - half_pos))
+    
+    if width is None and max_value is None:
+        [focus_fit, value_fit, width_fit], pcov = curve_fit(thFocus_Gaussian, x, y, p0=[motor0,ee0, width0], maxfev=10000, sigma=None, absolute_sigma= True)
+    elif width is None and max_value is not(None):
+        value_fit = max_value
+        [focus_fit, width_fit], pcov = curve_fit(lambda x, best, width: thFocus_Gaussian(x, best, max_value, width), x, y, p0=[motor0, width0], maxfev=10000, sigma=None, absolute_sigma= True) 
+    elif width is not(None) and max_value is None:
+        width_fit = width
+        [focus_fit, value_fit], pcov = curve_fit(lambda x, best, value: thFocus_Gaussian(x, best, value, width), x, y, p0=[motor0,ee0], maxfev=10000, sigma=None, absolute_sigma= True)
+    else:
+        width_fit = width
+        value_fit = max_value
+        [focus_fit], pcov = curve_fit(lambda x, best: thFocus_Gaussian(x, best, max_value, width), x, y, p0=[motor0], maxfev=10000, sigma=None, absolute_sigma= True)
+
+    
+    return ThFocusDF(focus_fit, value_fit, width_fit, "thFocus_Gaussian", np.min(x), np.max(x))
+
+
+def thFocus_Parabola(motor_piston, motor_peak, value_peak, width):
+    """
+    Parabola curve used for Through Focus analysis
+    f(x) = (1/width) * (x - motor_peak) + EE_peak
+    with motor_peak = -b/2a
+    and value_peak = (4ac - b*b)/4a
+    latus / width = 1/a
+    """
+    
+    
+    return (1/width) * np.power( (motor_piston - motor_peak), 2.) + value_peak
+
+def fit_thFocus_parabola(x, y):
+    """
+    Run Parabola fit for Through Focus analysis
+    
+    f(x) = a(x - motor_peak) + EE_peak
+    with motor_peak = -b/2a
+    and EE_peak = (4ac - b*b)/4a
+    latus / width = 1/a
+    """
+    [a, b, c], pcov = scipy.optimize.curve_fit(parabola, x, y)
+
+  
+    min_radius = (4*a*c-b*b)/(4*a)
+    min_pos = -b/(2*a)
+    latus = 1/a
+    
+    #return ThFocusDF([min_pos, min_radius, latus]), np.sqrt(np.diag(pcov))
+    return ThFocusDF(min_pos, min_radius, latus, "thFocus_Parabola", np.min(x), np.max(x))
+
+def thF_interpdata(x, y, criteria):
+    f = interpolate.interp1d(x, y, kind='cubic')
+    newx = np.linspace(np.min(x), np.max(x), 1000)
+    
+    if criteria == 'min':
+            focus_fit = np.argmin(f(newx))
+            value_fit = np.min(f(newx))
+    else:
+            focus_fit = np.argmax(f(newx))
+            value_fit = np.max(f(newx))        
+        
+    return ThFocusDF(*[focus_fit, value_fit, None])
+
+
+def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=None, doPrint=False, doRaise=False):
+    
+    try:
+        if ('fwhm' in criteria) or ('sep_2ndM' in criteria):
+            thfoc = fit_thFocus_parabola(series[index].values, series[criteria].values)  
+        else:
+            thfoc = fit_thFocus_Gaussian(series[index].values, series[criteria].values, width=width, max_value=max_value)
+    except RuntimeError:
+        if doRaise:
+            raise
+        else:
+            print('could not fit data for %s'%criteria)
+            thfoc = thF_interpdata(series[index].values, series[criteria].values, criteria)
+
+    if doPrint:
+        print("Best Focus(%s) = %.2f µm  %.2f"%(criteria, thfoc.focus, thfoc.value))
+    
+    return thfoc
+
+
+def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], doPlot=False, doPrint=False, head=0, tail=0):
+    thfoc_data = []
+    tmpdata = piston[head:piston.count()[0]-tail]
+    for criteria in criterias:
+        if criteria in piston.columns:
+            for (wavelength, fiber), series in tmpdata.groupby(['wavelength','fiber']):
+                thfoc = getBestFocus(series, criteria, index=index)
+                thfoc['peak'] =  series.peak.unique()[0]
+                thfoc['wavelength'] = wavelength
+                thfoc['fiber'] = fiber
+                thfoc['criteria'] = criteria
+                thfoc['axis'] = index
+
+                thfoc['visit'] = series.visit.unique()[0]
+                thfoc['experimentId'] = series.experimentId.unique()[0]
+
+
+                thfoc['px'] = np.interp(thfoc.focus, series[index], series['px'])
+                thfoc['py'] = np.interp(thfoc.focus, series[index], series['py'])
+                thfoc_data.append(thfoc)
+        else:
+            if doPrint:
+                print(f"{criteria} not in DataFrame")
+    thfoc_data = pd.concat(thfoc_data, ignore_index=True)
+    
+    if doPlot:
+        
+        grouped = piston.groupby(['wavelength','fiber'])
+        grouped_focus = thfoc_data.groupby(['wavelength','fiber'])
+
+        nrows = len(piston.fiber.unique())
+        ncols = len(piston.wavelength.unique())
+
+        newx = np.linspace(np.min(piston[index].values), np.max(piston[index].values), 100)
+        for criteria in criterias:
+            if criteria in piston.columns:
+                fig, axs = plt.subplots(nrows,ncols, figsize=(12,20), sharey=True, sharex=True)
+                fig.suptitle(f"ExpId {str(int(piston.experimentId.unique()[0]))} - {criteria}")
+                plt.subplots_adjust(top=0.95)
+                for (name, df), ax, (f, focus) in zip(grouped, axs.flat, grouped_focus):
+                    ax.set_title(f"{name[0]:.2f}, {name[1]}")
+                    df.plot.scatter(x=index,y=criteria, ax=ax)
+                    ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
+                    ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
+    return thfoc_data
+    
+    
+
+
+
+#####
+#####
 
 def getAllImageQuality(filelist, peak_list, roi_size, com=False, doBck=False, doPlot=False, EE=[3,5], trackPeak=False, doFit=True, doLSF=False):
    
@@ -54,6 +252,72 @@ def getAllImageQuality(filelist, peak_list, roi_size, com=False, doBck=False, do
     imdata['relPos'] = minPos['motor1']
     
     return imdata
+
+def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=None, doPrint=False, doRaise=False):
+    
+    try:
+        if ('fwhm' in criteria) or ('sep_2ndM' in criteria):
+            thfoc = fit_thFocus_parabola(series[index].values, series[criteria].values)  
+        else:
+            thfoc = fit_thFocus_Gaussian(series[index].values, series[criteria].values, width=width, max_value=max_value)
+    except RuntimeError:
+        if doRaise:
+            raise
+        else:
+            print('could not fit data for %s'%criteria)
+            thfoc = interpdata(series[index].values, series[criteria].values, criteria)
+
+    if doPrint:
+        print("Best Focus(%s) = %.2f µm  %.2f"%(criteria, thfoc.focus, thfoc.value))
+    
+    return thfoc
+
+
+def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], doPlot=False, doPrint=False, head=0, tail=0):
+    thfoc_data = []
+    tmpdata = piston[head:piston.count()[0]-tail]
+    for criteria in criterias:
+        if criteria in piston.columns:
+            for (wavelength, fiber), series in tmpdata.groupby(['wavelength','fiber']):
+                thfoc = getBestFocus(series, criteria, index=index)
+                thfoc['peak'] =  series.peak.unique()[0]
+                thfoc['wavelength'] = wavelength
+                thfoc['fiber'] = fiber
+                thfoc['criteria'] = criteria
+                thfoc['axis'] = index
+
+                thfoc['visit'] = series.visit.unique()[0]
+                thfoc['experimentId'] = series.experimentId.unique()[0]
+
+
+                thfoc['px'] = np.interp(thfoc.focus, series[index], series['px'])
+                thfoc['py'] = np.interp(thfoc.focus, series[index], series['py'])
+                thfoc_data.append(thfoc)
+        else:
+            if doPrint:
+                print(f"{criteria} not in DataFrame")
+    thfoc_data = pd.concat(thfoc_data, ignore_index=True)
+    
+    if doPlot:
+        
+        grouped = piston.groupby(['wavelength','fiber'])
+        grouped_focus = thfoc_data.groupby(['wavelength','fiber'])
+
+        nrows = len(piston.fiber.unique())
+        ncols = len(piston.wavelength.unique())
+
+        newx = np.linspace(np.min(piston[index].values), np.max(piston[index].values), 100)
+        for criteria in criterias:
+            if criteria in piston.columns:
+                fig, axs = plt.subplots(nrows,ncols, figsize=(12,20), sharey=True, sharex=True)
+                fig.suptitle(f"ExpId {str(int(piston.experimentId.unique()[0]))} - {criteria}")
+                plt.subplots_adjust(top=0.95)
+                for (name, df), ax, (f, focus) in zip(grouped, axs.flat, grouped_focus):
+                    ax.set_title(f"{name[0]:.2f}, {name[1]}")
+                    df.plot.scatter(x=index,y=criteria, ax=ax)
+                    ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
+                    ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
+    return thfoc_data
 
 
 
@@ -139,29 +403,30 @@ def getFocusMap(fitdata, index='relPos', criterias=['EE5','EE3', 'brightness', '
     columns = ['peak','wavelength', 'fiber', 'criteria', 'px', 'py', 'relPos', 'motor1', 'motor2', 'motor3', 'value']
     return pd.DataFrame(data, columns=columns)
 
-def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None):
-    # data should contains x,y,value
+def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
+               doPlot=False, plot_path=None, plot_title=None, plot_name=None, savePlot=False):
+#def fit3dPlane(df, coords=["x","y","z"], order=1, doPlot=False, plot_path=None, exp=None):
+    
     import scipy.linalg
     from mpl_toolkits.mplot3d import Axes3D
-    import matplotlib.pyplot as plt    
-
-    lowerBound_x = 0
-    upperBound_x = 4200
-
-    lowerBound_y = 0
-    upperBound_y = 4200
-
+    import matplotlib.pyplot as plt
+    
+    x = df[coords[0]]
+    y = df[coords[1]]
+    z = df[coords[2]]
+    x_bound = [x.min(),x.max()] if x_bound is None else x_bound
+    y_bound = [y.min(),y.max()] if y_bound is None else y_bound
 
     # regular grid covering the domain of the data
-    X,Y = np.meshgrid(np.arange(lowerBound_x, upperBound_x, 100), np.arange(lowerBound_y, upperBound_y, 100))
+    X,Y = np.meshgrid(np.arange(x_bound[0], x_bound[1], 100), np.arange(y_bound[0], y_bound[1], 100))
     XX = X.flatten()
     YY = Y.flatten()
 
     # 1: linear, 2: quadratic
     if order == 1:
         # best-fit linear plane
-        A = np.c_[data.px, data.py, np.ones(data.px.shape[0])]
-        C,_,_,_ = scipy.linalg.lstsq(A, data.relPos)    # coefficients
+        A = np.c_[x, y, np.ones(x.shape[0])]
+        C,_,_,_ = scipy.linalg.lstsq(A, z)    # coefficients
 
         # evaluate it on grid
         Z = C[0]*X + C[1]*Y + C[2]
@@ -171,12 +436,9 @@ def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None):
 
     elif order == 2:
         # best-fit quadratic curve
-#        A = np.c_[np.ones(data.shape[0]), data[:,:2], np.prod(data[:,:2], axis=1), data[:,:2]**2]
-#        C,_,_,_ = scipy.linalg.lstsq(A, data[:,2])
-        A = np.c_[np.ones(data.shape[0]), data[["px","py"]], \
-                  np.prod(data[["px","py"]].values, axis=1),\
-                  data[["px","py"]].values**2]
-        C,_,_,_ = scipy.linalg.lstsq(A, data.relPos)
+        A = np.c_[np.ones(x.shape[0]), df[[coords[0],coords[1]]], \
+                  np.prod(df[[coords[0],coords[1]]].values, axis=1),df[[coords[0],coords[1]]].values**2]
+        C,_,_,_ = scipy.linalg.lstsq(A, z)
         # evaluate it on a grid
         Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
 
@@ -185,19 +447,41 @@ def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None):
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
-        ax.scatter(data.px, data.py, data.relPos, c='r', s=50)
+        ax.scatter(x, y, z, c='r', s=50)
         plt.xlabel('X')
         plt.ylabel('Y')
         ax.set_zlabel('Z')
 #        ax.axis('equal')
 #        ax.axis('tight')
 
-        plt.suptitle(f"Exp{exp}")
+        if plot_title is not None:
+            plt.suptitle(plot_title)
 
-        plt.savefig(plot_path+f"Focus_plane_Exp{exp}.png")
+        if savePlot :
+            if plot_path is None or plot_title is None:
+                  raise Exception("you must specify a plot path and a title")
+            plt.savefig(plot_path+plot_title)
         plt.show()
+#        plt.cla()
     
     return C
+
+def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, coords=["px", "py", "relPos"]):
+    
+    #coords = ["px", "py", "relPos"]
+    x_bound = [0,4200]
+    y_bound = [0,4200]
+    
+    if exp is not None:
+        plot_title = f"Focus_plane_Exp{exp}.png"
+        plot_name = f"Exp{exp}"
+    else :
+        plot_title = None
+        plot_name = None
+
+    return fit3dPlane(data, coords=coords, order=1, x_bound=x_bound, y_bound=y_bound, \
+                      doPlot=doPlot, plot_path=plot_path, plot_title=plot_title, plot_name=plot_name)
+
 
 
 def findMotorPos(plane, inv_mat=None, doPrint=False):

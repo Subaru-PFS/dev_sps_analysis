@@ -64,6 +64,9 @@ def fitgauss1D(x, y):
     return TFocusDf(data), FitGauss1D(*popt1)
 
 
+def parabola(x, a, b, c):
+    return a*x**2 + b*x + c
+
 def fitparabola(x, y, deg=2, focus='min'):
     c = np.polyfit(x, y, deg)
     newx = np.linspace(np.min(x), np.max(x), 10000)
