@@ -484,12 +484,36 @@ def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, coords=[
 
 
 
-def findMotorPos(plane, inv_mat=None, doPrint=False):
+def findMotorPos(plane, inv_mat=None, doPrint=False, cam=None):
+    """
+    Determine focus motor position given the best plane.
+    it used a inversion matrix that gives each motor effect
+    motor_pos  = np.dot(invMat, best plane)
+    if no inv_mat is specify you have to specify the cam argument
+    an inv_mat will be automatically used
+    """
     if inv_mat is not None:
-        inv_mat = np.load(inv_mat, allow_pickle=True)
+        invMat = np.load(inv_mat, allow_pickle=True)
+    elif cam is not None:
+        arm = cam[0]
+        inv_mat_path = os.path.join(os.environ['LAM_SPS_ANALYSIS_DIR'],"notebooks/optical/CamUnitAlignement/invMat")
+        if arm == "r" or arm =="m":
+            inv_mat = os.path.join(inv_mat_path, "InvMat_sm1_R1_17sept2020.mat")
+            invMat = np.load(inv_mat, allow_pickle=True)
+        elif arm == "b":
+            inv_mat = os.path.join(inv_mat_path, "InvMat_sm1_B1_02oct2020.mat")
+            invMat = np.load(inv_mat, allow_pickle=True)
+        else:
+            raise Exception("arm must be b, r or m")
+    else:
+        raise Exception("Either inv_mat or arm must be provided")
+    
+    motors_pos = np.dot(invMat, plane)
     if doPrint:
-        print(np.dot(inv_mat, plane))
-    return np.dot(inv_mat, plane)
+        print(inv_mat)
+        print("xcu_%s motors moveCcd a=%.2f b=%.2f c=%.2f microns abs"%(cam,*motors_pos))
+    return motors_pos
+
 
 def findInvMatrix(dfPlanes, tilt0=None, doPrint=False, saveMat=None):
     calTilt = round(dfPlanes[["motor1", "motor2", "motor3"]].max().iloc[0]-dfPlanes[["motor1", "motor2", "motor3"]].min().iloc[0])
