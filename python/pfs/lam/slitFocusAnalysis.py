@@ -376,9 +376,10 @@ def getSlitTF(experimentId, com=False, doBck=False, doPlot=False, doPrint=False,
         peak['fiber'] = fiberId
 
         try:
-            fca_x = hdr['FCA_X']
+            fca_x = hdr['fca_x']
 
         except KeyError:
+            print("Error reading fca_x fits keyword")
             fca_x = guessedPos[i]
 
         peak['fca_x'] = fca_x
