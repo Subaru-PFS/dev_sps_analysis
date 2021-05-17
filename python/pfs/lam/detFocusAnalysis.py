@@ -469,8 +469,8 @@ def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
 def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, coords=["px", "py", "relPos"]):
     
     #coords = ["px", "py", "relPos"]
-    x_bound = [0,4200]
-    y_bound = [0,4200]
+    x_bound = [0,4096]
+    y_bound = [0,4176]
     
     if exp is not None:
         plot_title = f"Focus_plane_Exp{exp}.png"
