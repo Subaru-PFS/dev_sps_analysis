@@ -198,7 +198,6 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
     
 
 
-
 #####
 #####
 
@@ -253,71 +252,8 @@ def getAllImageQuality(filelist, peak_list, roi_size, com=False, doBck=False, do
     
     return imdata
 
-def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=None, doPrint=False, doRaise=False):
-    
-    try:
-        if ('fwhm' in criteria) or ('sep_2ndM' in criteria):
-            thfoc = fit_thFocus_parabola(series[index].values, series[criteria].values)  
-        else:
-            thfoc = fit_thFocus_Gaussian(series[index].values, series[criteria].values, width=width, max_value=max_value)
-    except RuntimeError:
-        if doRaise:
-            raise
-        else:
-            print('could not fit data for %s'%criteria)
-            thfoc = interpdata(series[index].values, series[criteria].values, criteria)
-
-    if doPrint:
-        print("Best Focus(%s) = %.2f µm  %.2f"%(criteria, thfoc.focus, thfoc.value))
-    
-    return thfoc
 
 
-def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], doPlot=False, doPrint=False, head=0, tail=0):
-    thfoc_data = []
-    tmpdata = piston[head:piston.count()[0]-tail]
-    for criteria in criterias:
-        if criteria in piston.columns:
-            for (wavelength, fiber), series in tmpdata.groupby(['wavelength','fiber']):
-                thfoc = getBestFocus(series, criteria, index=index)
-                thfoc['peak'] =  series.peak.unique()[0]
-                thfoc['wavelength'] = wavelength
-                thfoc['fiber'] = fiber
-                thfoc['criteria'] = criteria
-                thfoc['axis'] = index
-
-                thfoc['visit'] = series.visit.unique()[0]
-                thfoc['experimentId'] = series.experimentId.unique()[0]
-
-
-                thfoc['px'] = np.interp(thfoc.focus, series[index], series['px'])
-                thfoc['py'] = np.interp(thfoc.focus, series[index], series['py'])
-                thfoc_data.append(thfoc)
-        else:
-            if doPrint:
-                print(f"{criteria} not in DataFrame")
-    thfoc_data = pd.concat(thfoc_data, ignore_index=True)
-    
-    if doPlot:
-        
-        grouped = piston.groupby(['wavelength','fiber'])
-        grouped_focus = thfoc_data.groupby(['wavelength','fiber'])
-
-        nrows = len(piston.fiber.unique())
-        ncols = len(piston.wavelength.unique())
-
-        newx = np.linspace(np.min(piston[index].values), np.max(piston[index].values), 100)
-        for criteria in criterias:
-            if criteria in piston.columns:
-                fig, axs = plt.subplots(nrows,ncols, figsize=(12,20), sharey=True, sharex=True)
-                fig.suptitle(f"ExpId {str(int(piston.experimentId.unique()[0]))} - {criteria}")
-                plt.subplots_adjust(top=0.95)
-                for (name, df), ax, (f, focus) in zip(grouped, axs.flat, grouped_focus):
-                    ax.set_title(f"{name[0]:.2f}, {name[1]}")
-                    df.plot.scatter(x=index,y=criteria, ax=ax)
-                    ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
-                    ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
-    return thfoc_data
 
 
 
