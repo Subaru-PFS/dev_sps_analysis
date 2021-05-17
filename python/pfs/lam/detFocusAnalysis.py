@@ -196,7 +196,33 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
     return thfoc_data
     
     
+def getPlaneTilt(plane, doPrint=False):
+    # PFS detector size in px
+    x_size = 4096
+    y_size = 4176
+    pixel_size = 15. #microns
+    
+    tip = plane[0]/pixel_size
+    tilt = plane[1]/pixel_size
+    if doPrint:
+        print(f"Tip {tip:.3e} rad => {tip*x_size*pixel_size:.1f} microms")
+        print(f"Tilt {tilt:.3e} rad => {tilt*y_size*pixel_size:.1f} microns")
+    
+    return tip, tilt
 
+def getPlaneFocus(x,y, plane):
+    a = plane[0]
+    b = plane[1]
+    foc0 = plane[2]
+    
+    return foc0 - (a*x + b*y) 
+
+def getPlaneDeFocus(plane):
+    # PFS detector size in px
+    x_size = 4096
+    y_size = 4176    
+    return getPlaneFocus((x_size/2),(y_size/2), plane)
+    
 
 #####
 #####
