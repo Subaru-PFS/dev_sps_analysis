@@ -6,6 +6,7 @@ from datetime import datetime
 from pfs.lam.fileHandling import *
 from pfs.lam.analysisPlot import plotRoiPeak
 from pfs.lam.opdb import get_Visit_Set_Id
+from pfs.lam.linePeaksList import removeClosePeak, removeFluxPeak
 
 from pfs.lam.sep import *
 
