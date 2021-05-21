@@ -294,7 +294,7 @@ def plot_groups(piston_imdata, experimentId, plot_path, plot_prefix="Focus_Pisto
     if criteria == "EE5":
         grid.set(ylim=(0, 1))
     grid.add_legend()
-    plt.subplots_adjust(top=0.75)
+    plt.subplots_adjust(top=0.80)
     if title_suffix is None:
         title = f"{plot_prefix} - Exp{experimentId}"
     else: 

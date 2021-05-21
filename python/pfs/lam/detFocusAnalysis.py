@@ -141,7 +141,8 @@ def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=N
             raise
         else:
             print('could not fit data for %s'%criteria)
-            thfoc = thF_interpdata(series[index].values, series[criteria].values, criteria)
+            thfoc = ThFocusDF(*(np.nan * np.ones(6)))
+            #thfoc = thF_interpdata(series[index].values, series[criteria].values, criteria)
 
     if doPrint:
         print("Best Focus(%s) = %.2f µm  %.2f"%(criteria, thfoc.focus, thfoc.value))
@@ -149,20 +150,21 @@ def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=N
     return thfoc
 
 
-def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], doPlot=False, doPrint=False, head=0, tail=0):
+def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], doPlot=False, doPrint=False, head=0, tail=0, \
+                   savePlot=False, plot_path="", plot_title=None, width=None, max_value=None):
     thfoc_data = []
     tmpdata = piston[head:piston.count()[0]-tail]
     for criteria in criterias:
         if criteria in piston.columns:
             for (wavelength, fiber), series in tmpdata.groupby(['wavelength','fiber']):
-                thfoc = getBestFocus(series, criteria, index=index)
+                thfoc = getBestFocus(series, criteria, index=index, width=width, max_value=max_value)
                 thfoc['peak'] =  series.peak.unique()[0]
                 thfoc['wavelength'] = wavelength
                 thfoc['fiber'] = fiber
                 thfoc['criteria'] = criteria
                 thfoc['axis'] = index
 
-                thfoc['visit'] = series.visit.unique()[0]
+                #thfoc['visit'] = series.visit.unique()[0]
                 thfoc['experimentId'] = series.experimentId.unique()[0]
 
 
@@ -178,24 +180,190 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
         
         grouped = piston.groupby(['wavelength','fiber'])
         grouped_focus = thfoc_data.groupby(['wavelength','fiber'])
+        # Need to work on a better criteria that match good focus-able data and others....
+        width_limit = 2*thfoc_data.width.mean()
 
-        nrows = len(piston.fiber.unique())
-        ncols = len(piston.wavelength.unique())
+        ncols = len(piston.fiber.unique())
+        nrows = len(piston.wavelength.unique())
 
         newx = np.linspace(np.min(piston[index].values), np.max(piston[index].values), 100)
         for criteria in criterias:
             if criteria in piston.columns:
-                fig, axs = plt.subplots(nrows,ncols, figsize=(12,20), sharey=True, sharex=True)
-                fig.suptitle(f"ExpId {str(int(piston.experimentId.unique()[0]))} - {criteria}")
-                plt.subplots_adjust(top=0.95)
+                fig, axs = plt.subplots(nrows,ncols, figsize=(20,12), sharey=True, sharex=True)
+                visit_info = f"{piston.visit.values.min()} to {piston.visit.values.max()}"
+                temp_info = f"detBox: {piston.detBoxTemp.mean():.1f}K  ccd: {piston.ccdTemp.mean():.1f}K"
+                cam_info = piston.cam.unique()[0]
+                date_info = piston.obsdate[0].split('T')[0]
+                fca_focus = piston.fcaFocus.mean()
+                fig.suptitle(f"{cam_info.upper()} ExpId {str(int(piston.experimentId.unique()[0]))} - {visit_info} - {criteria} - {temp_info} - FCA Focus {fca_focus:.1f}mm - {date_info}")
+                plt.subplots_adjust(top=0.93)
                 for (name, df), ax, (f, focus) in zip(grouped, axs.flat, grouped_focus):
                     ax.set_title(f"{name[0]:.2f}, {name[1]}")
                     df.plot.scatter(x=index,y=criteria, ax=ax)
-                    ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
-                    ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
+                    if np.isnan(focus.focus.values) != True :
+                        ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
+                        if focus.width.values < width_limit:
+                            ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
+        if savePlot:
+            if plot_title is None:
+                plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
+            plt.savefig(plot_path+plot_title)
+                    
     return thfoc_data
     
     
+def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
+               doPlot=False, plot_path=None, plot_title=None, plot_name=None, savePlot=False):
+#def fit3dPlane(df, coords=["x","y","z"], order=1, doPlot=False, plot_path=None, exp=None):
+    
+    import scipy.linalg
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.pyplot as plt
+    
+    x = df[coords[0]]
+    y = df[coords[1]]
+    z = df[coords[2]]
+    x_bound = [x.min(),x.max()] if x_bound is None else x_bound
+    y_bound = [y.min(),y.max()] if y_bound is None else y_bound
+
+    # regular grid covering the domain of the data
+    X,Y = np.meshgrid(np.arange(x_bound[0], x_bound[1], 100), np.arange(y_bound[0], y_bound[1], 100))
+    XX = X.flatten()
+    YY = Y.flatten()
+
+    # 1: linear, 2: quadratic
+    if order == 1:
+        # best-fit linear plane
+        A = np.c_[x, y, np.ones(x.shape[0])]
+        C,_,_,_ = scipy.linalg.lstsq(A, z)    # coefficients
+
+        # evaluate it on grid
+        Z = C[0]*X + C[1]*Y + C[2]
+
+        # or expressed using matrix/vector product
+        #Z = np.dot(np.c_[XX, YY, np.ones(XX.shape)], C).reshape(X.shape)
+
+    elif order == 2:
+        # best-fit quadratic curve
+        A = np.c_[np.ones(x.shape[0]), df[[coords[0],coords[1]]], \
+                  np.prod(df[[coords[0],coords[1]]].values, axis=1),df[[coords[0],coords[1]]].values**2]
+        C,_,_,_ = scipy.linalg.lstsq(A, z)
+        # evaluate it on a grid
+        Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
+
+    if doPlot:
+    # plot points and fitted surface
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
+        ax.scatter(x, y, z, c='r', s=50)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        ax.set_zlabel('Z')
+#        ax.axis('equal')
+#        ax.axis('tight')
+
+        if plot_title is not None:
+            plt.suptitle(plot_title)
+
+        if savePlot :
+            if plot_path is None or plot_title is None:
+                  raise Exception("you must specify a plot path and a title")
+            plt.savefig(plot_path+plot_title)
+        plt.show()
+#        plt.cla()
+    
+    return C
+
+def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, coords=["px", "py", "relPos"]):
+    
+    #coords = ["px", "py", "relPos"]
+    x_bound = [0,4096]
+    y_bound = [0,4176]
+    
+    if exp is not None:
+        plot_title = f"Focus_plane_Exp{exp}.png"
+        plot_name = f"Exp{exp}"
+    else :
+        plot_title = None
+        plot_name = None
+
+    return fit3dPlane(data, coords=coords, order=1, x_bound=x_bound, y_bound=y_bound, \
+                      doPlot=doPlot, plot_path=plot_path, plot_title=plot_title, plot_name=plot_name)
+
+
+def getFocusInvMat(cam):
+    if cam is not None:
+        arm = cam[0]
+        inv_mat_path = os.path.join(os.environ['LAM_SPS_ANALYSIS_DIR'],"notebooks/optical/CamUnitAlignement/invMat")
+        if arm == "r" or arm =="m":
+            invMatName = "InvMat_sm1_R1_17sept2020.mat"
+        elif arm == "b":
+            invMatName = "InvMat_sm1_R1_17sept2020.mat"
+        else:
+            raise Exception("arm must be b, r or m")
+    else:
+        raise Exception("Either inv_mat or arm must be provided")
+    inv_mat = os.path.join(inv_mat_path, invMatName)
+    invMat = np.load(inv_mat, allow_pickle=True)
+    return invMat, invMatName
+    
+
+
+def findMotorPos(plane, inv_mat=None, doPrint=False, cam=None):
+    """
+    Determine focus motor position given the best plane.
+    it used a inversion matrix that gives each motor effect
+    motor_pos  = np.dot(invMat, best plane)
+    if no inv_mat is specify you have to specify the cam argument
+    an inv_mat will be automatically used
+    """
+    if inv_mat is not None:
+        invMat = np.load(inv_mat, allow_pickle=True)
+    elif cam is not None:
+        arm = cam[0]
+        inv_mat_path = os.path.join(os.environ['LAM_SPS_ANALYSIS_DIR'],"notebooks/optical/CamUnitAlignement/invMat")
+        if arm == "r" or arm =="m":
+            inv_mat = os.path.join(inv_mat_path, "InvMat_sm1_R1_17sept2020.mat")
+            invMat = np.load(inv_mat, allow_pickle=True)
+        elif arm == "b":
+            inv_mat = os.path.join(inv_mat_path, "InvMat_sm1_B1_02oct2020.mat")
+            invMat = np.load(inv_mat, allow_pickle=True)
+        else:
+            raise Exception("arm must be b, r or m")
+    else:
+        raise Exception("Either inv_mat or arm must be provided")
+    
+    motors_pos = np.dot(invMat, plane)
+    if doPrint:
+        print(inv_mat)
+        print("xcu_%s motors moveCcd a=%.2f b=%.2f c=%.2f microns abs"%(cam,*motors_pos))
+    return motors_pos
+
+
+def findInvMatrix(dfPlanes, tilt0=None, doPrint=False, saveMat=None):
+    calTilt = round(dfPlanes[["motor1", "motor2", "motor3"]].max().iloc[0]-dfPlanes[["motor1", "motor2", "motor3"]].min().iloc[0])
+    tilt0 = calTilt if tilt0 is None else tilt0
+    planes = dfPlanes[["a","b","c"]].values
+    
+    mat = np.zeros((3,3))
+    mat[:,0] = planes[0,:] - planes[1,:] 
+    mat[:,1] = planes[0,:] - planes[2,:]
+    mat[:,2] = planes[0,:] - planes[3,:]
+
+    mat = mat /tilt0
+    print(mat)
+    inv_mat = np.linalg.inv(mat)
+    print(inv_mat)
+    if doPrint:
+        print(f'tilt: {tilt0}')
+        print(np.dot(inv_mat,mat))
+        print(f'plane {np.dot(inv_mat, planes[0,:])}')
+    if saveMat is not None:
+        inv_mat.dump(saveMat)
+    return inv_mat
+
+
 def getPlaneTilt(plane, doPrint=False):
     # PFS detector size in px
     x_size = 4096
@@ -204,11 +372,14 @@ def getPlaneTilt(plane, doPrint=False):
     
     tip = plane[0]/pixel_size
     tilt = plane[1]/pixel_size
-    if doPrint:
-        print(f"Tip {tip:.3e} rad => {tip*x_size*pixel_size:.1f} microms")
-        print(f"Tilt {tilt:.3e} rad => {tilt*y_size*pixel_size:.1f} microns")
     
-    return tip, tilt
+    tip_mic = tip*x_size*pixel_size
+    tilt_mic = tilt*y_size*pixel_size
+    if doPrint:
+        print(f"Tip {tip:.3e} rad => {tip_mic:.1f} microns")
+        print(f"Tilt {tilt:.3e} rad => {tilt_mic:.1f} microns")
+    
+    return tip, tilt, tip_mic, tilt_mic 
 
 def getPlaneFocus(x,y, plane):
     a = plane[0]
@@ -217,12 +388,20 @@ def getPlaneFocus(x,y, plane):
     
     return foc0 - (a*x + b*y) 
 
-def getPlaneDeFocus(plane):
+def getPlaneDeFocus(plane, doPrint=False):
     # PFS detector size in px
     x_size = 4096
     y_size = 4176    
-    return getPlaneFocus((x_size/2),(y_size/2), plane)
-    
+    defoc = getPlaneFocus((x_size/2),(y_size/2), plane)
+    if doPrint:
+        print(f"defoc {defoc:.1f} microms")
+    return defoc
+
+def getPlaneInfo(plane, doPrint=False):
+    return getPlaneTilt(plane, doPrint=doPrint), getPlaneDeFocus(plane, doPrint=doPrint)
+
+
+
 
 #####
 #####
@@ -365,136 +544,3 @@ def getFocusMap(fitdata, index='relPos', criterias=['EE5','EE3', 'brightness', '
     columns = ['peak','wavelength', 'fiber', 'criteria', 'px', 'py', 'relPos', 'motor1', 'motor2', 'motor3', 'value']
     return pd.DataFrame(data, columns=columns)
 
-def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
-               doPlot=False, plot_path=None, plot_title=None, plot_name=None, savePlot=False):
-#def fit3dPlane(df, coords=["x","y","z"], order=1, doPlot=False, plot_path=None, exp=None):
-    
-    import scipy.linalg
-    from mpl_toolkits.mplot3d import Axes3D
-    import matplotlib.pyplot as plt
-    
-    x = df[coords[0]]
-    y = df[coords[1]]
-    z = df[coords[2]]
-    x_bound = [x.min(),x.max()] if x_bound is None else x_bound
-    y_bound = [y.min(),y.max()] if y_bound is None else y_bound
-
-    # regular grid covering the domain of the data
-    X,Y = np.meshgrid(np.arange(x_bound[0], x_bound[1], 100), np.arange(y_bound[0], y_bound[1], 100))
-    XX = X.flatten()
-    YY = Y.flatten()
-
-    # 1: linear, 2: quadratic
-    if order == 1:
-        # best-fit linear plane
-        A = np.c_[x, y, np.ones(x.shape[0])]
-        C,_,_,_ = scipy.linalg.lstsq(A, z)    # coefficients
-
-        # evaluate it on grid
-        Z = C[0]*X + C[1]*Y + C[2]
-
-        # or expressed using matrix/vector product
-        #Z = np.dot(np.c_[XX, YY, np.ones(XX.shape)], C).reshape(X.shape)
-
-    elif order == 2:
-        # best-fit quadratic curve
-        A = np.c_[np.ones(x.shape[0]), df[[coords[0],coords[1]]], \
-                  np.prod(df[[coords[0],coords[1]]].values, axis=1),df[[coords[0],coords[1]]].values**2]
-        C,_,_,_ = scipy.linalg.lstsq(A, z)
-        # evaluate it on a grid
-        Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
-
-    if doPlot:
-    # plot points and fitted surface
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
-        ax.scatter(x, y, z, c='r', s=50)
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        ax.set_zlabel('Z')
-#        ax.axis('equal')
-#        ax.axis('tight')
-
-        if plot_title is not None:
-            plt.suptitle(plot_title)
-
-        if savePlot :
-            if plot_path is None or plot_title is None:
-                  raise Exception("you must specify a plot path and a title")
-            plt.savefig(plot_path+plot_title)
-        plt.show()
-#        plt.cla()
-    
-    return C
-
-def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, coords=["px", "py", "relPos"]):
-    
-    #coords = ["px", "py", "relPos"]
-    x_bound = [0,4096]
-    y_bound = [0,4176]
-    
-    if exp is not None:
-        plot_title = f"Focus_plane_Exp{exp}.png"
-        plot_name = f"Exp{exp}"
-    else :
-        plot_title = None
-        plot_name = None
-
-    return fit3dPlane(data, coords=coords, order=1, x_bound=x_bound, y_bound=y_bound, \
-                      doPlot=doPlot, plot_path=plot_path, plot_title=plot_title, plot_name=plot_name)
-
-
-
-def findMotorPos(plane, inv_mat=None, doPrint=False, cam=None):
-    """
-    Determine focus motor position given the best plane.
-    it used a inversion matrix that gives each motor effect
-    motor_pos  = np.dot(invMat, best plane)
-    if no inv_mat is specify you have to specify the cam argument
-    an inv_mat will be automatically used
-    """
-    if inv_mat is not None:
-        invMat = np.load(inv_mat, allow_pickle=True)
-    elif cam is not None:
-        arm = cam[0]
-        inv_mat_path = os.path.join(os.environ['LAM_SPS_ANALYSIS_DIR'],"notebooks/optical/CamUnitAlignement/invMat")
-        if arm == "r" or arm =="m":
-            inv_mat = os.path.join(inv_mat_path, "InvMat_sm1_R1_17sept2020.mat")
-            invMat = np.load(inv_mat, allow_pickle=True)
-        elif arm == "b":
-            inv_mat = os.path.join(inv_mat_path, "InvMat_sm1_B1_02oct2020.mat")
-            invMat = np.load(inv_mat, allow_pickle=True)
-        else:
-            raise Exception("arm must be b, r or m")
-    else:
-        raise Exception("Either inv_mat or arm must be provided")
-    
-    motors_pos = np.dot(invMat, plane)
-    if doPrint:
-        print(inv_mat)
-        print("xcu_%s motors moveCcd a=%.2f b=%.2f c=%.2f microns abs"%(cam,*motors_pos))
-    return motors_pos
-
-
-def findInvMatrix(dfPlanes, tilt0=None, doPrint=False, saveMat=None):
-    calTilt = round(dfPlanes[["motor1", "motor2", "motor3"]].max().iloc[0]-dfPlanes[["motor1", "motor2", "motor3"]].min().iloc[0])
-    tilt0 = calTilt if tilt0 is None else tilt0
-    planes = dfPlanes[["a","b","c"]].values
-    
-    mat = np.zeros((3,3))
-    mat[:,0] = planes[0,:] - planes[1,:] 
-    mat[:,1] = planes[0,:] - planes[2,:]
-    mat[:,2] = planes[0,:] - planes[3,:]
-
-    mat = mat /tilt0
-    print(mat)
-    inv_mat = np.linalg.inv(mat)
-    print(inv_mat)
-    if doPrint:
-        print(f'tilt: {tilt0}')
-        print(np.dot(inv_mat,mat))
-        print(f'plane {np.dot(inv_mat, planes[0,:])}')
-    if saveMat is not None:
-        inv_mat.dump(saveMat)
-    return inv_mat

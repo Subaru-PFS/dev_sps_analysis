@@ -191,7 +191,6 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         data['cam'] = cam
         data['obsdate'] = getFitsKey(visitfilepath, 'DATE-AVG')
         data['experimentId'] = experimentId
-
     return data
 
 
