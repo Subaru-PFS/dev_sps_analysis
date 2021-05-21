@@ -137,7 +137,7 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
     data = getImageQuality(image, peaksList, roi_size=roi_size, seek_size=seek_size, EE=EE, com=com, \
                            doPlot=doPlot, doBck=doBck, doFit=doFit, doLSF=doLSF)
     if doSep:
-        dsep = getImageEncerclEnergy(image, peak_list, roi_size=roi_size, EE=EE,\
+        dsep = getImageEncerclEnergy(image, peaksList, roi_size=roi_size, EE=EE,\
         mask_size=mask_size, threshold= threshold, subpix = subpix ,\
         maxPeakDist=maxPeakDist, maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux,\
         doPlot=doPlot, doBck=doBck)
