@@ -1,6 +1,8 @@
 # Functions that use sep
 
 import sep
+import numpy as np
+import pandas as pd
 
 def createSepMask(shape, cx, cy, mask_size=50):
     indx = cy
