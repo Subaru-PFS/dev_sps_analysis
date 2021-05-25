@@ -20,7 +20,7 @@ class thFocusAccessor:
             raise AttributeError("Must have 'focus' and 'value'.")
     @property
     def vline(self):
-        return dict(x=self._obj.focus, ymin=0, ymax=self._obj.value)
+        return dict(x=self._obj.focus, ymin=0, ymax= 1 ) #if (self._obj.value > 2) else self._obj.value)
 
     @property
     def fitdata(self):
@@ -162,12 +162,26 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                 thfoc['wavelength'] = wavelength
                 thfoc['fiber'] = fiber
                 thfoc['criteria'] = criteria
+                thfoc['fcaFocus'] = series.fcaFocus.mean()
+
                 thfoc['axis'] = index
 
                 #thfoc['visit'] = series.visit.unique()[0]
                 thfoc['experimentId'] = series.experimentId.unique()[0]
 
+                if "detBoxTemp" in series.columns:
+                    detBoxTemp_mean = series.detBoxTemp.mean()
+                else:
+                    detBoxTemp_mean = np.nan
+                thfoc['detBoxTemp'] = detBoxTemp_mean
+                if "ccdTemp" in series.columns:
+                    ccdTemp_mean = series.ccdTemp.mean()
+                else:
+                    ccdTemp_mean = np.nan                
+                thfoc['ccdTemp'] = detBoxTemp_mean
 
+                thfoc['obsdate'] = series.obsdate[0].split('T')[0]
+      
                 thfoc['px'] = np.interp(thfoc.focus, series[index], series['px'])
                 thfoc['py'] = np.interp(thfoc.focus, series[index], series['py'])
                 thfoc_data.append(thfoc)
@@ -191,7 +205,15 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
             if criteria in piston.columns:
                 fig, axs = plt.subplots(nrows,ncols, figsize=(20,12), sharey=True, sharex=True)
                 visit_info = f"{piston.visit.values.min()} to {piston.visit.values.max()}"
-                temp_info = f"detBox: {piston.detBoxTemp.mean():.1f}K  ccd: {piston.ccdTemp.mean():.1f}K"
+                if "detBoxTemp" in piston.columns:
+                    detBoxTemp_mean = piston.detBoxTemp.mean()
+                else:
+                    detBoxTemp_mean = np.nan
+                if "ccdTemp" in piston.columns:
+                    ccdTemp_mean = piston.ccdTemp.mean()
+                else:
+                    ccdTemp_mean = np.nan                
+                temp_info = f"detBox: {detBoxTemp_mean:.1f}K  ccd: {ccdTemp_mean:.1f}K"
                 cam_info = piston.cam.unique()[0]
                 date_info = piston.obsdate[0].split('T')[0]
                 fca_focus = piston.fcaFocus.mean()
