@@ -180,7 +180,7 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                     ccdTemp_mean = np.nan                
                 thfoc['ccdTemp'] = detBoxTemp_mean
 
-                thfoc['obsdate'] = series.obsdate[0].split('T')[0]
+                thfoc['obsdate'] = series.reset_index().obsdate[0].split('T')[0]
       
                 thfoc['px'] = np.interp(thfoc.focus, series[index], series['px'])
                 thfoc['py'] = np.interp(thfoc.focus, series[index], series['py'])
@@ -222,6 +222,7 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                 for (name, df), ax, (f, focus) in zip(grouped, axs.flat, grouped_focus):
                     ax.set_title(f"{name[0]:.2f}, {name[1]}")
                     df.plot.scatter(x=index,y=criteria, ax=ax)
+                    ax.set_ylim(0,1)
                     if np.isnan(focus.focus.values) != True :
                         ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
                         if focus.width.values < width_limit:
