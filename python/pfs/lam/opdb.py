@@ -29,7 +29,7 @@ def getVisitRange(visit_set_id):
     df = utils.fetch_query(opdb.OpDB.url, query)
     visit_min = df.visitstart.values[0]
     visit_max = df.visitend.values[0]
-    return visit_min, visit_max
+    return int(visit_min), int(visit_max)
 
 def get_Visit_Set_Id(visit):
     query = f'select visit_set_id from visit_set WHERE pfs_visit_id = {visit}'
