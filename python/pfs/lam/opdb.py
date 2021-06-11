@@ -35,3 +35,29 @@ def get_Visit_Set_Id(visit):
     query = f'select visit_set_id from visit_set WHERE pfs_visit_id = {visit}'
     df = utils.fetch_query(opdb.OpDB.url, query)
     return df.values[0][0]
+
+
+#####
+# Alternative function using the logbook web page to retrieve informations
+#####
+
+def get_Visit_Set_Id_fromWeb(visit, url = "https://people.lam.fr/madec.fabrice/pfs/spsLogbook.html"):
+    df = pd.read_html(url, header=0, index_col=0, keep_default_na=True, skiprows=0)[0]
+    df.drop(index=df.index[0], inplace=True)
+    df.index.name = 'experimentId'
+    df.reset_index(inplace=True)
+    df = df.astype({"visitStart": int, "visitEnd": int,"experimentId": int})
+    
+    return df.query(f"visitStart <= {visit} <= visitEnd").experimentId.values[0]
+
+
+def getVisitRange_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/spsLogbook.html"):
+    df = pd.read_html(url, header=0, index_col=0, keep_default_na=True, skiprows=0)[0]
+    df.drop(index=df.index[0], inplace=True)
+    df.index.name = 'experimentId'
+    df.reset_index(inplace=True)
+    df = df.astype({"visitStart": int, "visitEnd": int,"experimentId": int})
+    visitStart, visitEnd = df[df.experimentId == expId][["visitStart","visitEnd"]].values[0]
+
+    return visitStart, visitEnd
+
