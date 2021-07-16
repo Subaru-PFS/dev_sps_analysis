@@ -16,7 +16,6 @@ from matplotlib.colors import LogNorm
 from astropy.modeling import models, fitting
 from astropy.stats import gaussian_sigma_to_fwhm
 
-from pfs.lam.sep import *
 
 # # Fit
 
