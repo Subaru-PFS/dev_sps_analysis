@@ -38,7 +38,7 @@ def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax
     im2 = ax2.imshow(outer_data,interpolation="none", origin="lower",cmap="gray", norm=LogNorm())
     
     fig.colorbar(im2, ax=ax2)
-    plt.show()
+#    plt.show()
 
 def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=None, doSave=False):
     if type(image) is str:     
@@ -105,10 +105,10 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
 
     plt.gcf().set_facecolor('w')
     if doSave:
-        fig.patch.set_alpha(0.5)
+        f.patch.set_alpha(0.5)
         plt.savefig(savePlotFile+f"_roi_all.png")
                   
-    plt.show()
+#    plt.show()
     
 
 def plotImageQuality(dframe, vmin=-1,vmax=-1, par="EE3", hist=None, filelist=None, com=False, doSave=False, imgPath="/home/pfs/shared/Pictures/" ):
@@ -185,7 +185,7 @@ def plotImageQuality(dframe, vmin=-1,vmax=-1, par="EE3", hist=None, filelist=Non
         fig.patch.set_alpha(0.5)
         plt.savefig(os.path.join(imgPath,\
             f"SM1_ImQual_{filelist.cam[0]}_EXP{filelist.experimentId[0]}_{par}_{filelist.obsdate[0]}.png"))  
-        plt.show()
+#        plt.show()
 
 
 def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, savePlotFile=None, com=False, doSave=False, title=None ):
@@ -260,7 +260,7 @@ def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, saveP
     if doSave:
         fig.patch.set_alpha(0.5)
         plt.savefig(savePlotFile+f"_{par}.png", bbox_inches = "tight" )
-        plt.show()
+#        plt.show()
 
         
 
@@ -280,7 +280,7 @@ def plot_one_group(piston_imdata, wave, fiber, experimentId, plot_path, criteria
     dat = datetime.now().isoformat(timespec='minutes') 
     if doSave : 
         plt.savefig(plot_path+f"Focus_fit_fiber{fiber}_wave{wave}_Exp{experimentId}_{dat}.png")
-    plt.show()
+#    plt.show()
     
 
     
@@ -306,4 +306,4 @@ def plot_groups(piston_imdata, experimentId, plot_path, plot_prefix="Focus_Pisto
         if verbose:
             print(f"write png file: \n {plot_path}{plot_prefix}_{col}_{hue}_Exp{experimentId}_{dat}.png")
         plt.savefig(plot_path+f"{plot_prefix}_{col}_{hue}_Exp{experimentId}_{dat}.png", transparent=True)
-    plt.show()
+#    plt.show()
