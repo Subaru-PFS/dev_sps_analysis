@@ -5,7 +5,7 @@ from scipy import spatial
 from datetime import datetime
 from pfs.lam.fileHandling import *
 from pfs.lam.analysisPlot import plotRoiPeak
-from pfs.lam.opdb import get_Visit_Set_Id
+from pfs.lam.opdb import get_Visit_Set_Id, get_Visit_Set_Id_fromWeb
 from pfs.lam.linePeaksList import removeClosePeak, removeFluxPeak
 
 from pfs.lam.sep import *
@@ -54,7 +54,7 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
 # get Encercled Energy using SEP
 
 def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
-                          mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80, maxPeakFlux=40000, minPeakFlux=2000, doPlot=False, scalePlot=False, doBck=False, noEE=False):
+                          mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80, maxPeakFlux=40000, minPeakFlux=2000, doPlot=False, scalePlot=False, doBck=False, doEE=False):
 
     if type(image) is list and len(image) == 1 :
         image = image[0]
@@ -73,8 +73,8 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
             cy = row["Y"]
             try:
                 #obj = getFluxPeakDataSep(image, cx,cy, EE=EE, roi_size=roi_size,mask_size=mask_size, subpix=subpix, doBck=doBck)
-                obj = getPeakDataSep(image, cx,cy, EE=EE, roi_size=roi_size, seek_size=seek_size, mask_size=mask_size,\
-                                     subpix=subpix, doBck=doBck)
+                obj = getPeakDataSep2(image, cx,cy, EE=EE, roi_size=roi_size, seek_size=seek_size, mask_size=mask_size,\
+                                     subpix=subpix, doBck=doBck, doEE=doEE, threshold=threshold)
                 obj["cx"] = cx
                 obj["cy"] = cy
                 obj["peak"] = row["peak"]
@@ -92,7 +92,7 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
         df = df.rename(columns={'x': 'px','y': 'py', 'peak': 'brightness'})
         df = removeClosePeak(df, dist=maxPeakDist, doPlot=doPlot)
         df = removeFluxPeak(df, fmax=maxPeakFlux, fmin=minPeakFlux, doPlot=doPlot)
-        if noEE != True:
+        if doEE :
             for (px,py),a in df.groupby(["px", "py"]):
                 flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(image, df['px'], df['py'],
                                                  roi_size/2., err=None, gain=1.0, subpix=subpix)
@@ -124,7 +124,8 @@ def getStatIM(dframe, par="EE5", thresold=0.9):
 
     
 def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo=None,\
-                      com=True, doBck=True, EE=[3,5], doFit=True, doLSF=False, doSep=False,\
+                      com=True, doBck=True, EE=[3,5], doFit=True, doLSF=False, \
+                      doSep=False, fullSep=False,\
                       doPlot=False, doPrint=False, csv_path=None, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
                       maxPeakFlux=40000, minPeakFlux=2000):
@@ -140,10 +141,11 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         dsep = getImageEncerclEnergy(image, peaksList, roi_size=roi_size, EE=EE,\
         mask_size=mask_size, threshold= threshold, subpix = subpix ,\
         maxPeakDist=maxPeakDist, maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux,\
-        doPlot=doPlot, doBck=doBck)
+        doPlot=doPlot, doBck=doBck, doEE=fullSep)
         dsep = dsep.add_prefix("sep_")
         dsep = dsep.rename(columns={'sep_peak': 'peak','sep_fiber': 'fiber'})
         data = data.merge(dsep, on=["peak","fiber"])
+
         
     if imageInfo is not None:
         visitfilepath = imageInfo["filename"] 
@@ -152,8 +154,12 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         try:
             experimentId = get_Visit_Set_Id(visit)
         except:
-            experimentId = np.nan
-            print("Unable to get experimentId from logbook")
+            try:
+                experimentId = get_Visit_Set_Id_fromWeb(visit)
+            except:
+                experimentId = np.nan
+                raise(f"Unable to get experimentId from logbook for visit: {visit}")
+
 
 
             # populate dataframe with keywords information
@@ -196,7 +202,7 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
 
 def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                       roi_size=16, EE=[3,5], seek_size=None,\
-                      com=True, doBck=True, doFit=True, doLSF=False, doSep=False,\
+                      com=True, doBck=True, doFit=True, doLSF=False, doSep=False,fullSep=False,\
                       doPlot=False, doPrint=False, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
                       maxPeakFlux=40000, minPeakFlux=2000):
@@ -217,15 +223,19 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     try:
         experimentId = get_Visit_Set_Id(visit)
     except:
-        experimentId = np.nan
-        print("Unable to get experimentId from logbook")
+        try:
+            experimentId = get_Visit_Set_Id_fromWeb(visit)
+        except:
+            experimentId = np.nan
+            print(f"Unable to get experimentId from logbook for visit: {visit}")
+            raise(f"Unable to get experimentId from logbook for visit: {visit}")
 
     imageInfo = dict(dataId)
     imageInfo.update(filename=calexfilePath)    
     
     data = getFullImageQuality(exp.image.array, peaksList, imageInfo=imageInfo,\
                       roi_size=roi_size, EE=EE, seek_size=seek_size,\
-                      com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,\
+                      com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,fullSep=fullSep,\
                       doPlot=doPlot, doPrint=doPrint, \
                       mask_size=mask_size, threshold= threshold, subpix = subpix , maxPeakDist=maxPeakDist,\
                       maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux)

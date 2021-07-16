@@ -1,4 +1,5 @@
 from opdb import utils, opdb
+import pandas as pd
 
 # def getVisitRange(visit_set_id):
 #    sql_all = f"select sps_sequence.visit_set_id, sps_exposure.pfs_visit_id from sps_exposure #\
@@ -48,7 +49,7 @@ def get_Visit_Set_Id_fromWeb(visit, url = "https://people.lam.fr/madec.fabrice/p
     df.reset_index(inplace=True)
     df = df.astype({"visitStart": int, "visitEnd": int,"experimentId": int})
     
-    return df.query(f"visitStart <= {visit} <= visitEnd").experimentId.values[0]
+    return df.query(f"visitStart <= {int(visit)} <= visitEnd").experimentId.values[0]
 
 
 def getVisitRange_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/spsLogbook.html"):

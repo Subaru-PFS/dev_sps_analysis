@@ -3,6 +3,9 @@
 import sep
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
+from pfs.lam.imageAnalysis import estimateCOM, getRois
 
 def createSepMask(shape, cx, cy, mask_size=50):
     indx = cy
@@ -17,15 +20,18 @@ def createSepMask(shape, cx, cy, mask_size=50):
     
     return mask
 
-def getPeakDataSep2(image, cx, cy, EE=None, roi_size=30, mask_size=50, threshold= 500, subpix=5, \
-                            doPlot=False, doBck=True, nRows=5, nRound=0, **kwargs):
+
+def getPeakDataSep2(image, cx, cy, EE=None, roi_size=30, mask_size=50, seek_size=None, threshold= 500, subpix=5, \
+                            doPlot=False, doBck=True, nRows=5, nRound=0, doEE=False, **kwargs):
     if type(image) is str:
         hdulist = fits.open(image, "readonly")
         image = hdulist[1].data
     
     objlist=[]
+    if seek_size is not None:
+        (cx,cy) = estimateCOM(image, cx, cy, roi_size=seek_size, doBck=doBck, nRows=nRows)   
     
-    outer_data, inner_data = getRois(image, cx, cy, inner_size=5, outer_size=roi_size, doBck=doBck, nRows=nRows, nRound=nRound)
+    outer_data, inner_data = getRois(image, cx, cy, inner_size=5, outer_size=roi_size, doBck=doBck, nRows=nRows)
     outer_data = np.ascontiguousarray(outer_data, dtype=np.float32)
 
 
@@ -33,30 +39,44 @@ def getPeakDataSep2(image, cx, cy, EE=None, roi_size=30, mask_size=50, threshold
     obj = sep.extract(outer_data, threshold)
     if len(obj) == 0 :
         df = pd.DataFrame({'cx': [cx], 'cy': [cy]})
+        if doPlot:
+            # plot background-subtracted image
+            fig, ax = plt.subplots()
+            m, s = np.mean(outer_data), np.std(outer_data)
+            im = ax.imshow(outer_data, interpolation='nearest', cmap='gray',
+                   vmin=m-s, vmax=m+s, origin='lower')
         return df
     
     df = pd.DataFrame(obj, columns=obj.dtype.names)
-    df = df[["flux", "peak", "x", "y", "flag", "npix", "theta"]]
+#    df = df[["flux", "peak", "x", "y", "flag", "npix", "theta"]]
     df = df.rename(columns={'x': 'px','y': 'py', 'peak': 'brightness'})
-    
-    flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(outer_data, df['px'], df['py'],
-                                     roi_size/2., err=None, gain=1.0, subpix=subpix)
-    df["flux_tot"] = flux_tot
+    if doEE:
+        flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(outer_data, df['px'], df['py'],
+                                         roi_size/2., err=None, gain=1.0, subpix=subpix)
+        df["flux_tot"] = flux_tot
 
-    EE = [3,5] if EE is None else EE
-    for ee in EE:
-        df["ECE%d"%ee], df["fluxErr"], flag = sep.sum_circle(outer_data, df['px'], df['py'],
-                                     ee/2., err=None, gain=1.0, subpix=subpix)
-        df["ECE%d"%ee] = df["ECE%d"%ee] / flux_tot
-    
+        EE = [3,5] if EE is None else EE
+        for ee in EE:
+            df["ECE%d"%ee], df["fluxErr"], flag = sep.sum_circle(outer_data, df['px'], df['py'],
+                                         ee/2., err=None, gain=1.0, subpix=subpix)
+            df["ECE%d"%ee] = df["ECE%d"%ee] / flux_tot
+
     df.px = df.px + roi_size/2
     df.py = df.py + roi_size/2
+    
+    if doPlot:
+        # plot background-subtracted image
+        fig, ax = plt.subplots()
+        m, s = np.mean(outer_data), np.std(outer_data)
+        ax.scatter(obj['x'], obj['y'], marker='+', c='r', s=800)
+        im = ax.imshow(outer_data, interpolation='nearest', cmap='gray',
+               vmin=m-s, vmax=m+s, origin='lower')
     
     return df
 
 
 
-def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50,  seek_size=None, threshold= 500, subpix=5, \
+def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50,  seek_size=None, threshold= 500, doEE=False ,subpix=5, \
                             doPlot=False, doBck=True, nRows=5, **kwargs):
     if type(image) is str:
         hdulist = fits.open(image, "readonly")
@@ -69,44 +89,65 @@ def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50,  seek_size
     mask = createSepMask(image.shape, cx, cy, mask_size=mask_size)
     obj = sep.extract(image, threshold, mask=mask)
     if len(obj) == 0 :
+        if True:
+            # plot background-subtracted image
+            data = image * mask
+            fig, ax = plt.subplots()
+            m, s = np.mean(data), np.std(data)
+            s = s
+            im = ax.imshow(data, interpolation='nearest', cmap='gray',
+                   vmin=m-s, vmax=m+s, origin='lower')
+            ax.set_xlim()
+
         df = pd.DataFrame({'cx': [cx], 'cy': [cy]})
         return df
     
     df = pd.DataFrame(obj, columns=obj.dtype.names)
 #    df = df[["flux", "peak", "x", "y", "flag", "npix", "theta"]]
     df = df.rename(columns={'x': 'px','y': 'py', 'peak': 'brightness'})
-    
-    if doBck:
-        flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(image, df['px'], df['py'],
-                                         roi_size/2., err=None, gain=1.0, subpix=subpix,bkgann=(roi_size/2., nRows+roi_size/2.))
-        df["flux_tot"] = flux_tot
+    if doEE:
 
-        EE = [3,5] if EE is None else EE
-        for ee in EE:
-            df["flux_EC%d"%ee], df["fluxErr"], flag = sep.sum_circle(image, df['px'], df['py'],
-                                                         ee/2., err=None, gain=1.0, subpix=subpix, 
-                                                         bkgann=(roi_size/2., nRows+roi_size/2.))
-            df["flux_CR%d"%ee], df["fluxErrR%d"%ee], flag = sep.sum_circle(image, df['px'], df['py'],
-                                                         np.sqrt(2)*ee/2., err=None, gain=1.0, subpix=subpix,
-                                                         bkgann=(roi_size/2., nRows+roi_size/2.))  
-            df["ECE%d"%ee] = df["flux_EC%d"%ee] / flux_tot
-            df["ECR%d"%ee] = df["flux_CR%d"%ee] / flux_tot
+        if doBck:
+            flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(image, df['px'], df['py'],
+                                             roi_size/2., err=None, gain=1.0, subpix=subpix,bkgann=(roi_size/2., nRows+roi_size/2.))
+            df["flux_tot"] = flux_tot
 
-    else:
-        flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(image, df['px'], df['py'],
-                                         roi_size/2., err=None, gain=1.0, subpix=subpix)
-        df["flux_tot"] = flux_tot
+            EE = [3,5] if EE is None else EE
+            for ee in EE:
+                df["flux_EC%d"%ee], df["fluxErr"], flag = sep.sum_circle(image, df['px'], df['py'],
+                                                             ee/2., err=None, gain=1.0, subpix=subpix, 
+                                                             bkgann=(roi_size/2., nRows+roi_size/2.))
+                df["flux_CR%d"%ee], df["fluxErrR%d"%ee], flag = sep.sum_circle(image, df['px'], df['py'],
+                                                             np.sqrt(2)*ee/2., err=None, gain=1.0, subpix=subpix,
+                                                             bkgann=(roi_size/2., nRows+roi_size/2.))  
+                df["ECE%d"%ee] = df["flux_EC%d"%ee] / flux_tot
+                df["ECR%d"%ee] = df["flux_CR%d"%ee] / flux_tot
 
-        EE = [3,5] if EE is None else EE
-        for ee in EE:
-            df["flux_EC%d"%ee], df["fluxErr"], flag = sep.sum_circle(image, df['px'], df['py'],
-                                         ee/2., err=None, gain=1.0, subpix=subpix)
-            df["ECE%d"%ee] = df["flux_EC%d"%ee] / flux_tot
-            df["flux_CR%d"%ee], df["fluxErrR%d"%ee], flag = sep.sum_circle(image, df['px'], df['py'],
-                                                         np.sqrt(2)*ee/2., err=None, gain=1.0, 
-                                                        subpix=subpix)  
-            df["ECE%d"%ee] = df["flux_EC%d"%ee] / flux_tot
-            df["ECR%d"%ee] = df["flux_CR%d"%ee] / flux_tot
+        else:
+            flux_tot, flux_tot_err, flux_tot_flag = sep.sum_circle(image, df['px'], df['py'],
+                                             roi_size/2., err=None, gain=1.0, subpix=subpix)
+            df["flux_tot"] = flux_tot
+
+            EE = [3,5] if EE is None else EE
+            for ee in EE:
+                df["flux_EC%d"%ee], df["fluxErr"], flag = sep.sum_circle(image, df['px'], df['py'],
+                                             ee/2., err=None, gain=1.0, subpix=subpix)
+                df["ECE%d"%ee] = df["flux_EC%d"%ee] / flux_tot
+                df["flux_CR%d"%ee], df["fluxErrR%d"%ee], flag = sep.sum_circle(image, df['px'], df['py'],
+                                                             np.sqrt(2)*ee/2., err=None, gain=1.0, 
+                                                            subpix=subpix)  
+                df["ECE%d"%ee] = df["flux_EC%d"%ee] / flux_tot
+                df["ECR%d"%ee] = df["flux_CR%d"%ee] / flux_tot
+        
+    if doPlot:
+        # plot background-subtracted image
+        print("toto")
+        data = image * mask
+        fig, ax = plt.subplots()
+        m, s = np.mean(data), np.std(data)
+        s = s
+        im = ax.imshow(data, interpolation='nearest', cmap='gray',
+               vmin=m-s, vmax=m+s, origin='lower')
          
     return df
 
