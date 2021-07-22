@@ -23,8 +23,15 @@ class thFocusAccessor:
         return dict(x=self._obj.focus, ymin=0, ymax= 1 ) #if (self._obj.value > 2) else self._obj.value)
 
     @property
-    def fitdata(self):
+    def fitdata(self, xmin=None, xmax=None):
         fit_function = self._obj.fit_function.values[0]
+        # this doesn't work
+        # how don"t know how to pass argument to that property...
+        # to study the defocus it is convenient to be able to change the range
+        #xmin = self._obj.fit_xmin if xmin is None else xmin
+        #xmax = self._obj.fit_xmax if xmax is None else xmax
+        #xmax = 2 #500
+        #xmin = -2 #-300
         xmin = self._obj.fit_xmin
         xmax = self._obj.fit_xmax
         newx = np.linspace(xmin, xmax, 100)
@@ -40,9 +47,9 @@ class thFocusAccessor:
 # Class to create DataFrame that contains thfocus fit data
         
 class ThFocusDF(pd.DataFrame):
-    def __init__(self, focus, value, width, fit_function, fit_xmin, fit_xmax):
-        pd.DataFrame.__init__(self, data=[(focus, value, width, fit_function, fit_xmin, fit_xmax)],\
-                              columns=["focus", "value", "width", "fit_function", "fit_xmin", "fit_xmax"])
+    def __init__(self, focus, value, width, fit_function, fit_xmin, fit_xmax, err_focus_fit, err_value_fit, err_width_fit):
+        pd.DataFrame.__init__(self, data=[(focus, value, width, fit_function, fit_xmin, fit_xmax, err_focus_fit, err_value_fit, err_width_fit)],\
+                              columns=["focus", "value", "width", "fit_function", "fit_xmin", "fit_xmax", "err_focus", "err_value", "err_width"])
         
 def thFocus_Gaussian(motor_piston, motor_peak, ee_peak, width):
     """
@@ -51,37 +58,47 @@ def thFocus_Gaussian(motor_piston, motor_peak, ee_peak, width):
     return ee_peak * np.exp(-np.power( (motor_piston -  motor_peak) / width, 2.))
 
 
-def fit_thFocus_Gaussian(x, y, width=None, max_value=None):
+def fit_thFocus_Gaussian(x, y, width=None, max_value=None, bounds=None):
     """
     Run the fit of the thFocus_Gaussian
     Estimate initial parameter
     if width and/or max_value is given they are pass as a fixed value and thus not part of optimisation parameters
+    if bounds is define, use bounds in curve_fit 
+    bounds : [(lower1, lower2), (upper1, upper2)]
+    use np.inf to not define bound for a given paramter (see curve_fit doc)
+    example: bounds=[(-np.inf, 0.8, 150), (np.inf, 1, 165)]
+        no bounds for best focus position (motor)
+        best focus value between 0.8 to 1
+        and width between 150 to 165
     run curve_fit
     return a DataFrame as defined by ThFocusDF class
     """
-    ee0 = np.max(y)
-    motor0 = x[np.argmax(y)]
+    if bounds is None:
+        ee0 = np.max(y)
+        motor0 = x[np.argmax(y)]
+        # width
+        half_pos = x[(np.abs(y - ee0/2)).argmin()]
+        width0 = 2 * np.abs((motor0 - half_pos))
     
- 
-    # width
-    half_pos = x[(np.abs(y - ee0/2)).argmin()]
-    width0 = 2 * np.abs((motor0 - half_pos))
-    
-    if width is None and max_value is None:
-        [focus_fit, value_fit, width_fit], pcov = curve_fit(thFocus_Gaussian, x, y, p0=[motor0,ee0, width0], maxfev=10000, sigma=None, absolute_sigma= True)
-    elif width is None and max_value is not(None):
-        value_fit = max_value
-        [focus_fit, width_fit], pcov = curve_fit(lambda x, best, width: thFocus_Gaussian(x, best, max_value, width), x, y, p0=[motor0, width0], maxfev=10000, sigma=None, absolute_sigma= True) 
-    elif width is not(None) and max_value is None:
-        width_fit = width
-        [focus_fit, value_fit], pcov = curve_fit(lambda x, best, value: thFocus_Gaussian(x, best, value, width), x, y, p0=[motor0,ee0], maxfev=10000, sigma=None, absolute_sigma= True)
+        if width is None and max_value is None:
+            [focus_fit, value_fit, width_fit], pcov = curve_fit(thFocus_Gaussian, x, y, p0=[motor0,ee0, width0], maxfev=10000, sigma=None, absolute_sigma= True)
+            [err_focus_fit, err_value_fit, err_width_fit] = np.sqrt(np.diag(pcov))
+        elif width is None and max_value is not(None):
+            value_fit = max_value
+            [focus_fit, width_fit], pcov = curve_fit(lambda x, best, width: thFocus_Gaussian(x, best, max_value, width), x, y, p0=[motor0, width0], maxfev=10000, sigma=None, absolute_sigma= True) 
+        elif width is not(None) and max_value is None:
+            width_fit = width
+            [focus_fit, value_fit], pcov = curve_fit(lambda x, best, value: thFocus_Gaussian(x, best, value, width), x, y, p0=[motor0,ee0], maxfev=10000, sigma=None, absolute_sigma= True)
+        else:
+            width_fit = width
+            value_fit = max_value
+            [focus_fit], pcov = curve_fit(lambda x, best: thFocus_Gaussian(x, best, max_value, width), x, y, p0=[motor0], maxfev=10000, sigma=None, absolute_sigma= True)
     else:
-        width_fit = width
-        value_fit = max_value
-        [focus_fit], pcov = curve_fit(lambda x, best: thFocus_Gaussian(x, best, max_value, width), x, y, p0=[motor0], maxfev=10000, sigma=None, absolute_sigma= True)
+        [focus_fit, value_fit, width_fit], pcov = curve_fit(thFocus_Gaussian, x, y, maxfev=10000, sigma=None, absolute_sigma= True, bounds=bounds)
+        [err_focus_fit, err_value_fit, err_width_fit] = np.sqrt(np.diag(pcov))
 
     
-    return ThFocusDF(focus_fit, value_fit, width_fit, "thFocus_Gaussian", np.min(x), np.max(x))
+    return ThFocusDF(focus_fit, value_fit, width_fit, "thFocus_Gaussian", np.min(x), np.max(x), err_focus_fit, err_value_fit, err_width_fit)
 
 
 def thFocus_Parabola(motor_piston, motor_peak, value_peak, width):
@@ -129,19 +146,19 @@ def thF_interpdata(x, y, criteria):
     return ThFocusDF(*[focus_fit, value_fit, None])
 
 
-def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=None, doPrint=False, doRaise=False):
+def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=None, doPrint=False, doRaise=False, bounds=None):
     
     try:
         if ('fwhm' in criteria) or ('sep_2ndM' in criteria):
             thfoc = fit_thFocus_parabola(series[index].values, series[criteria].values)  
         else:
-            thfoc = fit_thFocus_Gaussian(series[index].values, series[criteria].values, width=width, max_value=max_value)
+            thfoc = fit_thFocus_Gaussian(series[index].values, series[criteria].values, width=width, max_value=max_value, bounds=bounds)
     except RuntimeError:
         if doRaise:
             raise
         else:
             print('could not fit data for %s'%criteria)
-            thfoc = ThFocusDF(*(np.nan * np.ones(6)))
+            thfoc = ThFocusDF(*(np.nan * np.ones(9)))
             #thfoc = thF_interpdata(series[index].values, series[criteria].values, criteria)
 
     if doPrint:
@@ -151,18 +168,19 @@ def getBestFocus(series, criteria="EE5", index='relPos', width=None, max_value=N
 
 
 def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], doPlot=False, doPrint=False, head=0, tail=0, \
-                   savePlot=False, plot_path="", plot_title=None, width=None, max_value=None):
+                   savePlot=False, plot_path="", plot_title=None, width=None, max_value=None, bounds=None):
     thfoc_data = []
     tmpdata = piston[head:piston.count()[0]-tail]
     for criteria in criterias:
         if criteria in piston.columns:
             for (wavelength, fiber), series in tmpdata.groupby(['wavelength','fiber']):
-                thfoc = getBestFocus(series, criteria, index=index, width=width, max_value=max_value)
+                thfoc = getBestFocus(series, criteria, index=index, width=width, max_value=max_value, bounds=bounds)
                 thfoc['peak'] =  series.peak.unique()[0]
                 thfoc['wavelength'] = wavelength
                 thfoc['fiber'] = fiber
                 thfoc['criteria'] = criteria
                 thfoc['fcaFocus'] = series.fcaFocus.mean()
+                thfoc[f'{criteria}_max'] = series[criteria].max()
 
                 thfoc['axis'] = index
 
@@ -203,7 +221,7 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
         newx = np.linspace(np.min(piston[index].values), np.max(piston[index].values), 100)
         for criteria in criterias:
             if criteria in piston.columns:
-                fig, axs = plt.subplots(nrows,ncols, figsize=(20,12), sharey=True, sharex=True)
+                fig, axs = plt.subplots(nrows,ncols, figsize=(12,8), sharey=True, sharex=True)
                 visit_info = f"{piston.visit.values.min()} to {piston.visit.values.max()}"
                 if "detBoxTemp" in piston.columns:
                     detBoxTemp_mean = piston.detBoxTemp.mean()
@@ -215,7 +233,8 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                     ccdTemp_mean = np.nan                
                 temp_info = f"detBox: {detBoxTemp_mean:.1f}K  ccd: {ccdTemp_mean:.1f}K"
                 cam_info = piston.cam.unique()[0]
-                date_info = piston.obsdate[0].split('T')[0]
+                #date_info = piston.obsdate[0].split('T')[0]
+                date_info =""
                 fca_focus = piston.fcaFocus.mean()
                 fig.suptitle(f"{cam_info.upper()} ExpId {str(int(piston.experimentId.unique()[0]))} - {visit_info} - {criteria} - {temp_info} - FCA Focus {fca_focus:.1f}mm - {date_info}")
                 plt.subplots_adjust(top=0.93)
@@ -224,9 +243,9 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                     df.plot.scatter(x=index,y=criteria, ax=ax)
                     ax.set_ylim(0,1)
                     if np.isnan(focus.focus.values) != True :
-                        ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r")
-                        if focus.width.values < width_limit:
-                            ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
+                        ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r", ls="--")
+                        #if focus.width.values < width_limit:
+                        ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
         if savePlot:
             if plot_title is None:
                 plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
@@ -236,7 +255,7 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
     
     
 def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
-               doPlot=False, plot_path=None, plot_title=None, plot_name=None, savePlot=False):
+               doPlot=False, plot_path="./", plot_title=None, savePlot=False):
 #def fit3dPlane(df, coords=["x","y","z"], order=1, doPlot=False, plot_path=None, exp=None):
     
     import scipy.linalg
@@ -290,29 +309,29 @@ def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
             plt.suptitle(plot_title)
 
         if savePlot :
-            if plot_path is None or plot_title is None:
-                  raise Exception("you must specify a plot path and a title")
-            plt.savefig(plot_path+plot_title)
-        plt.show()
+            if plot_title is None:
+                  raise Exception("you must specify a title at least")
+            plt.savefig(plot_path+plot_title+".png")
+#        plt.show()
 #        plt.cla()
     
     return C
 
-def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, coords=["px", "py", "relPos"]):
+def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, plot_title=None, coords=["px", "py", "relPos"], savePlot=False):
     
     #coords = ["px", "py", "relPos"]
     x_bound = [0,4096]
     y_bound = [0,4176]
     
-    if exp is not None:
-        plot_title = f"Focus_plane_Exp{exp}.png"
-        plot_name = f"Exp{exp}"
-    else :
-        plot_title = None
-        plot_name = None
+#    if exp is not None and plot_title is None:
+#        plot_title = f"Focus_plane_Exp{exp}.png"
+#        plot_name = f"Exp{exp}"
+#    else :
+#        plot_title = None
+#        plot_name = None
 
     return fit3dPlane(data, coords=coords, order=1, x_bound=x_bound, y_bound=y_bound, \
-                      doPlot=doPlot, plot_path=plot_path, plot_title=plot_title, plot_name=plot_name)
+                      doPlot=doPlot, plot_path=plot_path, plot_title=plot_title, savePlot=savePlot)
 
 
 def getFocusInvMat(cam):
