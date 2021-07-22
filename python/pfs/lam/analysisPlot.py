@@ -284,12 +284,12 @@ def plot_one_group(piston_imdata, wave, fiber, experimentId, plot_path, criteria
     
 
     
-def plot_groups(piston_imdata, experimentId, plot_path, plot_prefix="Focus_Piston_plots", title_suffix=None, col="fiber", hue="wavelength", criteria="EE5", doSave=False, verbose=False) :
+def plot_groups(piston_imdata, experimentId, plot_path, plot_prefix="Focus_Piston_plots", title_suffix=None, col="fiber", hue="wavelength", criteria="EE5", index="motor1", doSave=False, verbose=False) :
     grid = sns.FacetGrid(piston_imdata, col=col, hue=hue,
 #                         col_wrap=4, height=3, legend_out=True)
                          col_wrap=3, height=3, legend_out=True)
 
-    grid.map(plt.plot, "motor1", criteria, marker="+")
+    grid.map(plt.plot, index, criteria, marker="+")
     grid.fig.tight_layout(w_pad=1)
     if criteria == "EE5":
         grid.set(ylim=(0, 1))
