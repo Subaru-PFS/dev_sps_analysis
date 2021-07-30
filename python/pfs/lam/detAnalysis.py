@@ -173,10 +173,17 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
 
         if type(peaksList) is str: 
             data["peaklist"] = peaksList        
-
-        data["xm1pos"] = np.float(getFitsKey(visitfilepath, 'W_XM1POS'))
-        data["xm2pos"] = np.float(getFitsKey(visitfilepath, 'W_XM2POS'))
-        data["xm3pos"] = np.float(getFitsKey(visitfilepath, 'W_XM3POS'))
+        
+        if getFitsKey(visitfilepath, 'W_XM1POS', doRaise=False) is not np.nan :
+            data["xm1pos"] = np.float(getFitsKey(visitfilepath, 'W_XM1POS'))
+            data["xm2pos"] = np.float(getFitsKey(visitfilepath, 'W_XM2POS'))
+            data["xm3pos"] = np.float(getFitsKey(visitfilepath, 'W_XM3POS'))
+        else :
+            data["xm1pos"] = np.float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR1_MICRONS'))
+            data["xm2pos"] = np.float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR2_MICRONS'))
+            data["xm3pos"] = np.float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR3_MICRONS'))
+           
+        
         data["motor1"] = data["xm1pos"] 
         data["motor2"] = data["xm2pos"]
         data["motor3"] = data["xm3pos"]
