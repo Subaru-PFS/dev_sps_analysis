@@ -151,14 +151,17 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         visitfilepath = imageInfo["filename"] 
         visit = imageInfo["visit"] 
         cam = f"{imageInfo['arm']}{imageInfo['spectrograph']}"
-        try:
-            experimentId = get_Visit_Set_Id(visit)
-        except:
+        if "experimentId" in imageInfo.keys():
+            experimentId = imageInfo["experimentId"]
+        else:
             try:
-                experimentId = get_Visit_Set_Id_fromWeb(visit)
+                experimentId = get_Visit_Set_Id(visit)
             except:
-                experimentId = np.nan
-                raise(f"Unable to get experimentId from logbook for visit: {visit}")
+                try:
+                    experimentId = get_Visit_Set_Id_fromWeb(visit)
+                except:
+                    experimentId = np.nan
+                    raise(f"Unable to get experimentId from logbook for visit: {visit}")
 
 
 
@@ -205,7 +208,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                       com=True, doBck=True, doFit=True, doLSF=False, doSep=False,fullSep=False,\
                       doPlot=False, doPrint=False, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
-                      maxPeakFlux=40000, minPeakFlux=2000):
+                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None):
     """
     Calculate quality (EE, and sep info) for each peak from peaklist for a given visit defined in dataId dict
     butler is required to access the data
@@ -220,18 +223,21 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     calexfilePath = butler.getUri("calexp", dataId)
     visit = dataId["visit"] 
     cam = f"{dataId['arm']}{dataId['spectrograph']}"
-    try:
-        experimentId = get_Visit_Set_Id(visit)
-    except:
+    if experimentId is None:
         try:
-            experimentId = get_Visit_Set_Id_fromWeb(visit)
+            experimentId = get_Visit_Set_Id(visit)
         except:
-            experimentId = np.nan
-            print(f"Unable to get experimentId from logbook for visit: {visit}")
-            raise(f"Unable to get experimentId from logbook for visit: {visit}")
+            try:
+                experimentId = get_Visit_Set_Id_fromWeb(visit)
+            except:
+                experimentId = np.nan
+                print(f"Unable to get experimentId from logbook for visit: {visit}")
+                raise(f"Unable to get experimentId from logbook for visit: {visit}")
 
     imageInfo = dict(dataId)
-    imageInfo.update(filename=calexfilePath)    
+    imageInfo.update(filename=calexfilePath)
+    imageInfo.update(experimentId=experimentId)    
+
     
     data = getFullImageQuality(exp.image.array, peaksList, imageInfo=imageInfo,\
                       roi_size=roi_size, EE=EE, seek_size=seek_size,\
