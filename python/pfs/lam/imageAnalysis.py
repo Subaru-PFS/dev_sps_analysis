@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from scipy.ndimage import center_of_mass
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
-from ginga.util import iqcalc
+#from ginga.util import iqcalc
 from scipy import interpolate
 from scipy.interpolate import interp1d
 import matplotlib.patches as patches

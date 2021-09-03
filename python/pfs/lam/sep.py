@@ -1,6 +1,6 @@
 # Functions that use sep
 
-import sep
+#import sep
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
