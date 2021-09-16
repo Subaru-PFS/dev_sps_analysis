@@ -4,6 +4,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from matplotlib.colors import LogNorm
+import matplotlib.gridspec as gridspec
 
 from pfs.lam.imageAnalysis import selectRoi, getRois
 
@@ -218,7 +219,7 @@ def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, saveP
     if vmax == -1 :
         vmax = z.max()
     fact = 100
-    if par == "brightness":
+    if (par == "brightness") |(par == "sep_brightness"):
         fact = 1./100
     
     if hist is not None:
