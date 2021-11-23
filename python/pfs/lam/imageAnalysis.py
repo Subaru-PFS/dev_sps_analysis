@@ -105,7 +105,7 @@ def selectRoi(image, cx, cy, roi_size, doBck=False, nRows=5, doPlot=False):
     half = int(roi_size/2)
     
     nRows = nRows if doBck else 0
-    broi = np.copy(data[indx - half - nRows: indx + half + 1 + nRows, indy - half : indy + half + 1])
+    broi = np.copy(data[indx - half - nRows: indx + half  + nRows, indy - half : indy + half ])
     roi = broi[nRows:-nRows,:] if doBck else broi
 
     edges = np.concatenate([ broi[:nRows,:], broi[-nRows:,:]])
