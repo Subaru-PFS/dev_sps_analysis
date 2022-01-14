@@ -344,7 +344,7 @@ def getFocusInvMat(cam):
         if arm == "r" or arm =="m":
             invMatName = "InvMat_sm1_R1_17sept2020.mat"
         elif arm == "b":
-            invMatName = "InvMat_sm1_R1_17sept2020.mat"
+            invMatName = "InvMat_sm1_B1_02oct2020.mat"
         else:
             raise Exception("arm must be b, r or m")
     else:
