@@ -330,8 +330,11 @@ def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, plot_tit
 #        plot_title = None
 #        plot_name = None
 
-    return fit3dPlane(data, coords=coords, order=1, x_bound=x_bound, y_bound=y_bound, \
+    coeff = fit3dPlane(data, coords=coords, order=1, x_bound=x_bound, y_bound=y_bound, \
                       doPlot=doPlot, plot_path=plot_path, plot_title=plot_title, savePlot=savePlot)
+    if savePlot:
+        np.savetxt(plot_path+plot_title+".txt", coeff)
+    return coeff
 
 
 def getFocusInvMat(cam):
