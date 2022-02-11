@@ -427,11 +427,14 @@ def getPlaneTilt(plane, doPrint=False):
     return tip, tilt, tip_mic, tilt_mic 
 
 def getPlaneFocus(x,y, plane):
+    """
+    plane equation is z = a*x + b*y + d 
+    """
     a = plane[0]
     b = plane[1]
     foc0 = plane[2]
     
-    return foc0 - (a*x + b*y) 
+    return foc0 + (a*x + b*y) 
 
 def getPlaneDeFocus(plane, doPrint=False):
     # PFS detector size in px
