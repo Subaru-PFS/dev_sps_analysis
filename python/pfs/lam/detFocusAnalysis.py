@@ -241,7 +241,8 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                 for (name, df), ax, (f, focus) in zip(grouped, axs.flat, grouped_focus):
                     ax.set_title(f"{name[0]:.2f}, {name[1]}")
                     df.plot.scatter(x=index,y=criteria, ax=ax)
-                    ax.set_ylim(0,1)
+                    if criteria == "EE5" or criteria == "EE3":
+                        ax.set_ylim(0,1)                   
                     if np.isnan(focus.focus.values) != True :
                         ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r", ls="--")
                         #if focus.width.values < width_limit:
