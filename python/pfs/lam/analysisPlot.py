@@ -308,3 +308,58 @@ def plot_groups(piston_imdata, experimentId, plot_path, plot_prefix="Focus_Pisto
             print(f"write png file: \n {plot_path}{plot_prefix}_{col}_{hue}_Exp{experimentId}_{dat}.png")
         plt.savefig(plot_path+f"{plot_prefix}_{col}_{hue}_Exp{experimentId}_{dat}.png", transparent=True)
 #    plt.show()
+
+
+def plotThoughFocusData(piston_data, index="relPos", criterias=["EE5", "EE3", "2ndM"], head=0, tail=0, \
+                   savePlot=False, plot_path="", plot_title=None, ylog=False, ylim=(None,None) ):
+    """
+    Plot Through focus data 
+    piston_data: dataframe
+    index: "x axis for the plot"
+    criterias : "y axis"
+    """
+    piston = piston_data[head:piston_data.count()[0]-tail]
+
+    grouped = piston.groupby(['wavelength','fiber'])
+
+
+    ncols = len(piston.fiber.unique())
+    nrows = len(piston.wavelength.unique())
+
+    newx = np.linspace(np.min(piston[index].values), np.max(piston[index].values), 100)
+    for criteria in criterias:
+        if criteria in piston.columns:
+            fig, axs = plt.subplots(nrows,ncols, figsize=(12,8), sharey='row', sharex=True)
+            visit_info = f"{piston.visit.values.min()} to {piston.visit.values.max()}"
+            if "detBoxTemp" in piston.columns:
+                detBoxTemp_mean = piston.detBoxTemp.mean()
+            else:
+                detBoxTemp_mean = np.nan
+            if "ccdTemp" in piston.columns:
+                ccdTemp_mean = piston.ccdTemp.mean()
+            else:
+                ccdTemp_mean = np.nan                
+            temp_info = f"detBox: {detBoxTemp_mean:.1f}K  ccd: {ccdTemp_mean:.1f}K"
+            cam_info = piston.cam.unique()[0]
+            #date_info = piston.obsdate[0].split('T')[0]
+            date_info =""
+            fca_focus = piston.fcaFocus.mean()
+            fig.suptitle(f"{cam_info.upper()} ExpId {str(int(piston.experimentId.unique()[0]))} - {visit_info} - {criteria} - {temp_info} - FCA Focus {fca_focus:.1f}mm - {date_info}")
+            plt.subplots_adjust(top=0.93)
+            for (name, df), ax in zip(grouped, axs.flat):
+                ax.set_title(f"{name[0]:.2f}, {name[1]}")
+                df.plot.scatter(x=index,y=criteria, ax=ax)
+                if criteria == "EE5" or criteria == "EE3":
+                    ax.set_ylim(0,1)
+                else :
+                    bot, top = ylim                    
+                    if ylog:
+                        ax.set_yscale('log')
+                    else :
+                        bot = 0 if bot is None else bot
+                    ax.set_ylim(bottom=bot, top=top)
+
+            if savePlot:
+                if plot_title is None:
+                    plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
+                plt.savefig(plot_path+plot_title)
