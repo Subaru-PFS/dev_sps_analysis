@@ -363,3 +363,27 @@ def plotThoughFocusData(piston_data, index="relPos", criterias=["EE5", "EE3", "2
                 if plot_title is None:
                     plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
                 plt.savefig(plot_path+plot_title)
+
+
+def plotPeaksBrightness(df, doSave=False, plot_title=None,savePlotFile=None):
+    """
+    plot peak brightness by waves and fibers
+    df: dataframe coming from ImageQualityToCsv (need to have sep_brightness wavelength and fiber)
+    """
+    fig = plt.figure(figsize=(10,12))
+    plt.subplot(2, 1, 1)
+    imdata.set_index("fiber").groupby(["wavelength"]).sep_brightness.plot(subplots=False, stacked=True,legend=True, logy=True, style="--*",  sharex=True)
+    plt.legend(bbox_to_anchor=(1.0, 1.0))
+    plt.ylabel("ADU")
+
+    plt.subplot(2, 1, 2)
+    imdata.set_index("fiber").groupby(["wavelength"]).sep_brightness.plot(subplots=False, stacked=True,legend=True, style="--*",  sharex=True)
+    plt.legend(bbox_to_anchor=(1.0, 1.0))
+    plt.ylabel("ADU")
+
+    plt.suptitle(plot_title)
+    plt.gcf().set_facecolor('w')
+
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(savePlotFile+".png", bbox_inches='tight')
