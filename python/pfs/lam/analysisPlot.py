@@ -372,12 +372,12 @@ def plotPeaksBrightness(df, doSave=False, plot_title=None,savePlotFile=None):
     """
     fig = plt.figure(figsize=(10,12))
     plt.subplot(2, 1, 1)
-    imdata.set_index("fiber").groupby(["wavelength"]).sep_brightness.plot(subplots=False, stacked=True,legend=True, logy=True, style="--*",  sharex=True)
+    df.set_index("fiber").groupby(["wavelength"]).sep_brightness.plot(subplots=False, stacked=True,legend=True, logy=True, style="--*",  sharex=True)
     plt.legend(bbox_to_anchor=(1.0, 1.0))
     plt.ylabel("ADU")
 
     plt.subplot(2, 1, 2)
-    imdata.set_index("fiber").groupby(["wavelength"]).sep_brightness.plot(subplots=False, stacked=True,legend=True, style="--*",  sharex=True)
+    df.set_index("fiber").groupby(["wavelength"]).sep_brightness.plot(subplots=False, stacked=True,legend=True, style="--*",  sharex=True)
     plt.legend(bbox_to_anchor=(1.0, 1.0))
     plt.ylabel("ADU")
 
