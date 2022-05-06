@@ -38,6 +38,10 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
             obj["fiber"] = row["fiber"]
             obj["wavelength"] = wave
             obj["element"] = row["element"] if "element" in plist.columns else np.nan
+            obj["exptime"] = row["exptime"] if "exptime" in plist.columns else np.nan
+            obj["lamp"] = row["lamp"] if "lamp" in plist.columns else np.nan
+            obj["dcb_wheel"] = row["dcb_wheel"] if "dcb_wheel" in plist.columns else np.nan
+
             objlist.append(obj)
         except Exception as e:
             print(str(e), "cx:%i, cy:%i"%(cx,cy))
