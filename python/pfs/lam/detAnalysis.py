@@ -37,10 +37,10 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
             obj["peak"] = row["peak"]
             obj["fiber"] = row["fiber"]
             obj["wavelength"] = wave
-            obj["element"] = row["element"] if "element" in plist.columns else np.nan
-            obj["exptime"] = row["exptime"] if "exptime" in plist.columns else np.nan
-            obj["lamp"] = row["lamp"] if "lamp" in plist.columns else np.nan
-            obj["dcb_wheel"] = row["dcb_wheel"] if "dcb_wheel" in plist.columns else np.nan
+            obj["peak_element"] = row["element"] if "element" in plist.columns else np.nan
+            obj["peak_exptime"] = row["exptime"] if "exptime" in plist.columns else np.nan
+            obj["peak_lamp"] = row["lamp"] if "lamp" in plist.columns else np.nan
+            obj["peak_dcb_wheel"] = row["dcb_wheel"] if "dcb_wheel" in plist.columns else np.nan
 
             objlist.append(obj)
         except Exception as e:
@@ -211,6 +211,11 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         data['cam'] = cam
         data['obsdate'] = getFitsKey(visitfilepath, 'DATE-AVG')
         data['experimentId'] = experimentId
+        
+        data["exptime"] = getFitsKey(visitfilepath, 'exptime')
+        data["lamp"] = getArcLampForNist(None,fitsfile=visitfilepath, strict=False)
+        data["dcb_wheel"] = getFitsKey(visitfilepath, 'W_AITLWH')
+        
     return data
 
 

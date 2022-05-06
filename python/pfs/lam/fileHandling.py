@@ -254,14 +254,17 @@ def getSourcesUsed(image_file):
 
     return ",".join(listsource)
 
-def getArcLampForNist(lamp, fitsfile=None):
+def getArcLampForNist(lamp, fitsfile=None, strict=True):
     lamp = lamp if fitsfile is None else getSourcesUsed(fitsfile)
     if lamp == "neon" :
         arclamp = "Ne"
     elif lamp == "argon":
         arclamp = "Ar"
     elif lamp == "hgar":
-        arclamp = "Hg | Ar"
+        if strict :
+            arclamp = "Hg | Ar"
+        else:
+            arclamp = "HgAr"
     elif lamp == "krypton":
         arclamp = "Kr"
     elif lamp == "xenon":
