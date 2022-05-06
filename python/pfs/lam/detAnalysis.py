@@ -212,7 +212,7 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         data['obsdate'] = getFitsKey(visitfilepath, 'DATE-AVG')
         data['experimentId'] = experimentId
         
-        data["exptime"] = getFitsKey(visitfilepath, 'exptime')
+        data["exptime"] = round(getFitsKey(visitfilepath, 'exptime'),1)
         data["lamp"] = getArcLampForNist(None,fitsfile=visitfilepath, strict=False)
         data["dcb_wheel"] = getFitsKey(visitfilepath, 'W_AITLWH')
         
@@ -267,7 +267,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
 
     csvName = f"Imquality_{cam}_Exp{experimentId}_{visit}_{date_time}.csv"
     if not os.path.exists(csv_path):
-        os.makedirs(csv_path)
+        os.makedirs(csv_path,exist_ok =True)
     data.to_csv(os.path.join(csv_path, csvName))
     if doPrint:
         print(os.path.join(csv_path, csvName))
