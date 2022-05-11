@@ -1,70 +1,67 @@
 from pfs.lam.imageAnalysis import neighbor_outlier_filter
-
 from pfs.lam.detAnalysis import *
 from pfs.lam.detFocusAnalysis import *
 from pfs.lam.fileHandling import *
 from pfs.lam.style import *
 from pfs.lam.analysisPlot import *
-import glob
+from pfs.lam.misc import find_nearest
+
 import lsst.daf.persistence as dafPersist
 
-from pfs.lam.misc import find_nearest
-import time, sys
-import getopt
-
+import glob
+import time, sys, os
+import argparse
 from datetime import datetime
+
 import matplotlib
 matplotlib.use('Agg')
 
 
-datetime.now().strftime("%Y-%m-%dT%Hh%M")
 
 
-def main(argv):
-    visit = ''
-    peak = ''
-    basePath = os.path.join('/data/drp/analysis/sm3/')
-    drpPath = "/data/drp"
-    repo = "sps"
+def main():
+    dat = datetime.now().strftime("%Y-%m-%dT%Hh%M")
+    print(dat)
+    parser = argparse.ArgumentParser(description="Cluster_GetImqual2csv.py argument parser")
+    
+    parser.add_argument("-c","--cam", type=str, help="camera to process like 'r3'", required=True)
+    parser.add_argument("-r","--rerun", type=str, help="data rerun. could be 'ginga/detrend' or your rerun folder ", required=True)
+    parser.add_argument("-e","--experimentId", type=int ,help="experimentId or visit_set_id")
+    parser.add_argument("-b","--basePath", type=str, default="/data/drp/analysis",help="path where to store the results")
+    parser.add_argument("--criteria", type=str, default="EE5",help="thfocus criteria, EE5 by default")
+    parser.add_argument("--drpPath", type=str, default="/data/drp",help="main drp folder")
+    parser.add_argument("--repo", type=str, default="sps",help="drp repository")
+    parser.add_argument("--roi_size", type=int, default=24,help="roi_size in px used to calculate the total flux")
+    parser.add_argument("--doBck", action="store_true" ,default=True,help="local bck substraction. default=True")
+    parser.add_argument("--piston_index", type=str, default="motor1",help="index used for throughfocus analysis")
+    parser.add_argument("--filtered_waves", type=float, nargs="+", default=[],help="waves to filtered")
+    
+
+    
+    args = parser.parse_args()
+    
+    cam = args.cam
+    rerun = args.rerun
+    experimentId = args.experimentId
+    criteria = args.criteria
+    basePath = args.basePath
+    drpPath = args.drpPath
+    repo = args.repo
+    roi_size = args.roi_size
+    doBck = args.doBck
+    piston_index = args.piston_index
+    filtered_waves = np.array(args.filtered_waves)
+
+    
+    
     repoRoot = f"{drpPath}/{repo}"
-    experimentId = None
-    rerun = "ginga"
     extra = ""
 
-    try:
-        opts, args = getopt.getopt(argv,"hc:b:e:r:",["cam=", "basePath=", "experimentId=","rerun="])
-    except getopt.GetoptError:
-        print('Cluster_GetBestFocusPlanefromCSV.py -b <basePath> -c <cam> -e <experimentId>')
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print('GetIMqual2csv-standalone.py -v <visit> -p <peakfile> -c <cam>')
-            sys.exit()
-        elif opt in ("-b", "--basePath"):
-            basePath = arg
-        elif opt in ("-c", "--cam"):
-            cam = arg
-        elif opt in ("-e", "--experimentId"):
-            experimentId = arg
-        elif opt in ("-r", "--rerun"):
-            rerun = arg
-
-           
-
-
-    #outpath = "output\\" if outpath is None else outpath
-
     # define defaut parameters
-    roi_size = 30
-    seek_size = 60
-
     com = True  # Center Of Mass
-    doBck = True
     head = 0
     tail = 0
-    criteria = 'EE5'
     criterias = [criteria]
-    piston_index = 'motor1'
 
     verbose = False
     doPrint = False
@@ -80,9 +77,9 @@ def main(argv):
     files = []
     
 
-    csvPath = basePath+"Exp"+str(experimentId)+"/"+rerun+"_roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra
+    csvPath = os.path.join(basePath,"Exp"+str(experimentId)+"/"+rerun+"_roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
     if not os.path.exists(csvPath):
-        csvPath = basePath+"Exp"+str(experimentId)+"/"+rerun+"/"+"roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra
+        csvPath = os.path.join(basePath,"Exp"+str(experimentId)+"/"+rerun+"/"+"roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
 
     dataPath = csvPath
     print(dataPath)
@@ -128,12 +125,13 @@ def main(argv):
     
     piston_filtered = piston_filtered[piston_filtered.EE5_nbh_flag]
     
-    # Remove a wavelenght if need 
-    # faudrait faire ça mieux...
-#    if cam[0] == "r":
-#        filter_wave = waves[-1]
-#        print(f"{filter_wave:.2f} filtered")
-#        piston_filtered = piston_filtered[piston_filtered.wavelength != filter_wave]
+    # Remove a wavelenght if needed 
+    #
+    if filtered_waves.size != 0:
+        for wave in filtered_waves:
+            filter_wave = waves[np.searchsorted(waves, wave)]
+            print(f"{filter_wave:.2f} filtered")
+            piston_filtered = piston_filtered[piston_filtered.wavelength != filter_wave]
     
     #
     # Fit
@@ -142,15 +140,15 @@ def main(argv):
     bounds = [(-200, 0.86, 150), (500, 1, 163)]
     extra_title = f"_bounds_086_163_err_max_{piston_index}"
     
-    thfoc_data = getAllBestFocus(piston_filtered.dropna(subset=['EE5']), criterias=['EE5'], index=piston_index, doPlot=True, savePlot=doSave, plot_path=csvPath, plot_title=f"Exp{experimentId}_thfocus_fit{extra_title}",\
+    thfoc_data = getAllBestFocus(piston_filtered.dropna(subset=['EE5']), criterias=['EE5'], index=piston_index, doPlot=True, savePlot=doSave, plot_path=csvPath, plot_title=f"Exp{experimentId}_thfocus_fit{extra_title}_{dat}",\
                              bounds=bounds)
     # save in CSV
-    thfoc_data.to_csv(f"{csvPath}imquality_{cam}_Exp{experimentId}_doBck{str(doBck)}_piston_thfocfitdata{extra_title}.csv")
+    thfoc_data.to_csv(f"{csvPath}imquality_{cam}_Exp{experimentId}_doBck{str(doBck)}_piston_thfocfitdata{extra_title}_{dat}.csv")
 
     # Best Plane
-    piston_plane = getBestPlane(thfoc_data[thfoc_data.criteria == "EE5"].dropna(), coords=["px", "py", "focus"], order=1, doPlot=True, exp=experimentId, plot_path=dataPath, plot_title=f"Focus3DPlane_{cam}_Exp{experimentId}", savePlot=doSave)
+    piston_plane = getBestPlane(thfoc_data[thfoc_data.criteria == "EE5"].dropna(), coords=["px", "py", "focus"], order=1, doPlot=True, exp=experimentId, plot_path=dataPath, plot_title=f"Focus3DPlane_{cam}_Exp{experimentId}_{dat}", savePlot=doSave)
 
-    txtfile = f"SM1_{cam.upper()}_BestFocusPlane_Exp{experimentId}_doBck{str(doBck)}_{criteria}{extra_title}.dat"
+    txtfile = f"SM1_{cam.upper()}_BestFocusPlane_Exp{experimentId}_doBck{str(doBck)}_{criteria}{extra_title}_{dat}.dat"
 
     invMat, invMatName = getFocusInvMat(cam)
     foc = findMotorPos(piston_plane, cam=cam)
@@ -168,9 +166,6 @@ def main(argv):
     txt += f"{defocus:.1f} microns\n"
 
     print(txt)
-
-    # debug B2 
-    #dataPath = "/drp/analysis/sm2/debugB2"
 
     if doSave :
         text_file = open(csvPath+txtfile, "w")
@@ -201,7 +196,7 @@ def main(argv):
 
 if __name__ == "__main__":
     start = time.time()
-    main(sys.argv[1:])
+    main()
     finish = time.time()
     elapsed = finish - start
     print(f"Time elapsed: {elapsed}")
