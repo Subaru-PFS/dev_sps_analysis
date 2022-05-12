@@ -263,7 +263,109 @@ def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, saveP
         plt.savefig(savePlotFile+f"_{par}.png", bbox_inches = "tight" )
 #        plt.show()
 
+def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, savePlotFile=None, com=False, doSave=False, title=None ):
+    # select peak center 
+    # default x , y are objx and objy, but if it is the center of Mass it is oid_x and oid_y
+#    x = dframe["objx"]
+#    y = dframe["objy"]
+#    if com :
+#        x = dframe["oid_x"]
+#        y = dframe["oid_y"]
+
+    ## should now be px, py which are affected during calculation according com or not
+    x = dframe["fiber"] # dframe["px"]
+    y = dframe["wavelength"] # dframe["py"]   
+    
+    z = dframe[par]
+    
+    #    stat = 'ECE5' if par == 'ECE5' else 'EE5'
+    val = 0.5 if par == "EE3" else 0.9
+
+    stat = par
+    xs = dframe[dframe[stat]>val].px
+    ys = dframe[dframe[stat]>val].py
+    zs = dframe[dframe[stat]>val][stat]
+
+    statEE = f"{100*len(zs)/len(z):.1f}% of peak have a {par} > {val}"
         
+    if vmin == -1 :
+        vmin = z.min()
+    if vmax == -1 :
+        vmax = z.max()
+    fact = 100
+    if (par == "brightness") |(par == "sep_brightness"):
+        fact = 1./100
+    
+    if hist is not None:
+        #fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+        fig = plt.figure(figsize=(16, 8))
+        gs = gridspec.GridSpec(1, 3,
+    #                      width_ratios=[3,1],
+    #                      height_ratios=[1,1]
+                       )
+        ax1 = plt.subplot(gs[0,:2])
+        ax2 = plt.subplot(gs[0,2])
+        im = ax1.scatter(x, y, c=z, s= z*fact, vmin=vmin, vmax=vmax)
+        ax1.set_title(par)
+#        ax1.set_xlim([0,4095])
+#        ax1.set_ylim([0,4175])
+#        ax1.set_xlim([0,651])
+#        ax1.set_ylim([630,970])
+        plt.colorbar(im,ax=ax1,shrink=1)
+
+        dframe[hist].plot.hist(ax=ax2, bins=20)
+        val = 0.5 if par == "EE3" else 0.9
+        ax2.axvline(x=val, color='k')
+        ax2.set_title("Histogram")
+        ax2.set_xlim(vmin,vmax)
+        if title is not(None):
+            fig.suptitle(title+"\n"+statEE)
+    else:
+        fig = plt.figure(figsize=(10, 8))
+
+        plt.scatter(x, y, c= z, s= z*fact, vmin=vmin, vmax=vmax)
+        plt.colorbar(shrink=1)
+        #plt.xlim(0,4095)
+        #plt.ylim(0,4175)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+
+        plt.show()
+        if title is not(None):
+            fig.suptitle(title+"\n"+statEE)
+          
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(savePlotFile+f"_{par}.png", bbox_inches = "tight" )
+#        plt.show()
+
+
+def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None, doSave=False ):
+    fig = plt.figure(figsize=(8, 8))
+
+    criteria_values = dframe[par].values
+
+    values, base = np.histogram(criteria_values, bins=40)
+    #evaluate the cumulative
+    cumulative = np.cumsum(values)
+    # plot the cumulative function
+    #plt.plot(base[:-1], 100*(cumulative/len(best.EE5.values)), c='blue')
+    #plot the survival function
+    plt.plot(base[:-1], 100*(len(criteria_values)-cumulative)/len(criteria_values), c='green')
+    plt.ylabel("% of peak")
+    plt.xlabel("EE5")
+    plt.axhline(y=95, c="r")
+    plt.axvline(x=0.90, c="r")
+    plt.title(title)
+    plt.gcf().set_facecolor('w')
+    plt.annotate("req",(0.9,95), color ="r" )
+    if doSave:
+        fig.patch.set_alpha(0.5)
+        plt.savefig(savePlotFile+".png", bbox_inches = "tight" )
+#    plt.show()
+    
+    
+    
 
 
 def plot_one_group(piston_imdata, wave, fiber, experimentId, plot_path, criteria="EE5", doSave=False) :
