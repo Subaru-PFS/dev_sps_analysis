@@ -141,7 +141,6 @@ def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50,  seek_size
         
     if doPlot:
         # plot background-subtracted image
-        print("toto")
         data = image * mask
         fig, ax = plt.subplots()
         m, s = np.mean(data), np.std(data)
