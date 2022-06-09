@@ -1,5 +1,6 @@
 from opdb import utils, opdb
 import pandas as pd
+import re
 
 # def getVisitRange(visit_set_id):
 #    sql_all = f"select sps_sequence.visit_set_id, sps_exposure.pfs_visit_id from sps_exposure #\
@@ -61,4 +62,16 @@ def getVisitRange_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/
     visitStart, visitEnd = df[df.experimentId == expId][["visitStart","visitEnd"]].values[0]
 
     return visitStart, visitEnd
+
+def getDuplicate_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/spsLogbook.html"):
+    df = pd.read_html(url, header=0, index_col=0, keep_default_na=True, skiprows=0)[0]
+    df.drop(index=df.index[0], inplace=True)
+    df.reset_index(inplace=True)
+    df.rename(columns={"index": "experimentId"}, inplace=True)
+    df = df.astype({"experimentId": int})
+    df = df[df['experimentId'] == expId]
+    res = re.findall('duplicate=\d+', df.cmd_str.values[0])
+    res = re.findall('\d+', res[0])
+
+    return int(res[0])
 
