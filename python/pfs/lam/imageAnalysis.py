@@ -173,7 +173,7 @@ def EELsf(image, px, py, ee_size, roi_size=16, doBck=False):
     return np.sum(sroi)/np.sum(nlsf)
 
 def getPeakData(image, cx, cy, EE=None,roi_size=30, seek_size=None, \
-                doPlot=False,com=False,doFit=True,\
+                doPlot=False,com=True,doFit=False,\
                 doBck=False,doLSF=False,fwhm_radius=10,fwhm_method='gaussian',**kwargs):
     
     image = openImage(image)

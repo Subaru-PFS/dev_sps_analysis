@@ -12,7 +12,7 @@ from pfs.lam.sep import *
 
 
 def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
-                    com=False, doPlot=False, scalePlot=False, doBck=False, doFit=True, doLSF=False):
+                    com=True, doPlot=False, scalePlot=False, doBck=False, doFit=False, doLSF=False):
     """
     Calulate Ensquared Energy in EExEE px for all peak given in peak_list for a given image
     Returns a pandas Dataframe
