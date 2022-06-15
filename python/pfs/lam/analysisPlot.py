@@ -340,7 +340,7 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
 #        plt.show()
 
 
-def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None, doSave=False ):
+def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None, doSave=False, vmin=-1,vmax=-1 ):
     fig = plt.figure(figsize=(8, 8))
 
     criteria_values = dframe[par].values
@@ -352,6 +352,14 @@ def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None,
     #plt.plot(base[:-1], 100*(cumulative/len(best.EE5.values)), c='blue')
     #plot the survival function
     plt.plot(base[:-1], 100*(len(criteria_values)-cumulative)/len(criteria_values), c='green')
+    
+    if vmin == -1 :
+        vmin = base[:-1].min()
+    if vmax == -1 :
+        vmax = base[:-1].max()
+
+    plt.xlim(vmin,vmax)
+  
     plt.ylabel("% of peak")
     plt.xlabel("EE5")
     plt.axhline(y=95, c="r")
