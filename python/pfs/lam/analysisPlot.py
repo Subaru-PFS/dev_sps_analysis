@@ -263,7 +263,7 @@ def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, saveP
         plt.savefig(savePlotFile+f"_{par}.png", bbox_inches = "tight" )
 #        plt.show()
 
-def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, savePlotFile=None, com=False, doSave=False, title=None ):
+def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, savePlotFile=None, com=False, doSave=False, title=None, waveband=None ):
     # select peak center 
     # default x , y are objx and objy, but if it is the center of Mass it is oid_x and oid_y
 #    x = dframe["objx"]
@@ -307,17 +307,26 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
         ax2 = plt.subplot(gs[0,2])
         im = ax1.scatter(x, y, c=z, s= z*fact, vmin=vmin, vmax=vmax)
         ax1.set_title(par)
+        ax1.set_xlabel('Fiber number')
+        ax1.set_ylabel('wavelength (nm)')
 #        ax1.set_xlim([0,4095])
 #        ax1.set_ylim([0,4175])
 #        ax1.set_xlim([0,651])
 #        ax1.set_ylim([630,970])
         plt.colorbar(im,ax=ax1,shrink=1)
+        if waveband is not None:
+            ax1.axhline(y=waveband[0], color='k', ls="--")
+            ax1.axhline(y=waveband[1], color='k', ls="--")
 
         dframe[hist].plot.hist(ax=ax2, bins=20)
         val = 0.5 if par == "EE3" else 0.9
         ax2.axvline(x=val, color='k')
         ax2.set_title("Histogram")
         ax2.set_xlim(vmin,vmax)
+        ax2.set_ylabel('count')
+        ax2.set_xlabel(f'{par}')
+
+
         if title is not(None):
             fig.suptitle(title+"\n"+statEE)
     else:
@@ -327,8 +336,8 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
         plt.colorbar(shrink=1)
         #plt.xlim(0,4095)
         #plt.ylim(0,4175)
-        plt.xlabel('X')
-        plt.ylabel('Y')
+        plt.xlabel('Fiber number')
+        plt.ylabel('wavelength (nm)')
 
         plt.show()
         if title is not(None):
