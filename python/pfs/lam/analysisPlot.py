@@ -264,17 +264,13 @@ def plotImageQualityScatter(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, saveP
 #        plt.show()
 
 def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=None, savePlotFile=None, com=False, doSave=False, title=None, waveband=None ):
-    # select peak center 
-    # default x , y are objx and objy, but if it is the center of Mass it is oid_x and oid_y
-#    x = dframe["objx"]
-#    y = dframe["objy"]
-#    if com :
-#        x = dframe["oid_x"]
-#        y = dframe["oid_y"]
+    '''
+    
+    '''
+    markers = {"Ne": "^", "Ar": "o", "HgAr" : "D", "Kr": "s", "Xe": "h" }
 
-    ## should now be px, py which are affected during calculation according com or not
-    x = dframe["fiber"] # dframe["px"]
-    y = dframe["wavelength"] # dframe["py"]   
+    x = dframe["fiber"]
+    y = dframe["wavelength"]
     
     z = dframe[par]
     
@@ -305,10 +301,25 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
                        )
         ax1 = plt.subplot(gs[0,:2])
         ax2 = plt.subplot(gs[0,2])
-        im = ax1.scatter(x, y, c=z, s= z*fact, vmin=vmin, vmax=vmax)
+        for name, group in dframe.groupby("lamp"):
+            group = group.copy()
+            m = markers.get(name)
+#            im = ax1.scatter(x, y, c=z, s= z*fact, vmin=vmin, vmax=vmax)
+            im = ax1.scatter(
+                x=group["fiber"],
+                y=group["wavelength"],
+                c=group[par],
+                s= group[par]*fact,
+                vmin=vmin,
+                vmax=vmax,
+                marker=m,
+                label=name,
+            )
+        ax1.invert_xaxis()
         ax1.set_title(par)
         ax1.set_xlabel('Fiber number')
         ax1.set_ylabel('wavelength (nm)')
+        ax1.legend()
 #        ax1.set_xlim([0,4095])
 #        ax1.set_ylim([0,4175])
 #        ax1.set_xlim([0,651])
@@ -332,7 +343,24 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
     else:
         fig = plt.figure(figsize=(10, 8))
 
-        plt.scatter(x, y, c= z, s= z*fact, vmin=vmin, vmax=vmax)
+#        plt.scatter(x, y, c= z, s= z*fact, vmin=vmin, vmax=vmax)
+        for name, group in dframe.groupby("lamp"):
+            group = group.copy()
+            m = markers.get(name)
+#            im = ax1.scatter(x, y, c=z, s= z*fact, vmin=vmin, vmax=vmax)
+            im = plt.scatter(
+                x=group["fiber"],
+                y=group["wavelength"],
+                c=group[par],
+                s= group[par]*fact,
+                vmin=vmin,
+                vmax=vmax,
+                marker=m,
+                label=name,
+            )
+        plt.legend()
+        plt.gca().invert_xaxis()
+
         plt.colorbar(shrink=1)
         #plt.xlim(0,4095)
         #plt.ylim(0,4175)
