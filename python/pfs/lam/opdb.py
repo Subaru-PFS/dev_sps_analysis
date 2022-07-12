@@ -75,3 +75,13 @@ def getDuplicate_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/s
 
     return int(res[0])
 
+def getMultiTimeExp_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/spsLogbook.html"):
+    df = pd.read_html(url, header=0, index_col=0, keep_default_na=True, skiprows=0)[0]
+    df.drop(index=df.index[0], inplace=True)
+    df.reset_index(inplace=True)
+    df.rename(columns={"index": "experimentId"}, inplace=True)
+    df = df.astype({"experimentId": int})
+    df = df[df['experimentId'] == expId]
+    res = re.findall('exptime=\d+(?:,\d+)*', df.cmd_str.values[0])
+    res = re.findall('\d+', res[0])
+    return int(len(res))
