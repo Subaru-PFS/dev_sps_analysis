@@ -27,7 +27,7 @@ def fetch_sps_sequence(visit_set_id):
 
 def getVisitRange(visit_set_id):
     query = f"select min(pfs_visit_id) as visitStart, max(pfs_visit_id) as visitEnd from visit_set WHERE visit_set_id  = {visit_set_id}"
-    
+
     df = utils.fetch_query(opdb.OpDB.url, query)
     visit_min = df.visitstart.values[0]
     visit_max = df.visitend.values[0]
@@ -49,7 +49,7 @@ def get_Visit_Set_Id_fromWeb(visit, url = "https://people.lam.fr/madec.fabrice/p
     df.index.name = 'experimentId'
     df.reset_index(inplace=True)
     df = df.astype({"visitStart": int, "visitEnd": int,"experimentId": int})
-    
+
     return df.query(f"visitStart <= {int(visit)} <= visitEnd").experimentId.values[0]
 
 
@@ -71,9 +71,13 @@ def getDuplicate_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/s
     df = df.astype({"experimentId": int})
     df = df[df['experimentId'] == expId]
     res = re.findall('duplicate=\d+', df.cmd_str.values[0])
-    res = re.findall('\d+', res[0])
 
-    return int(res[0])
+    try :
+        res = int(re.findall('\d+', res[0])[0])
+    except :
+        res = 1
+
+    return res
 
 def getMultiTimeExp_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pfs/spsLogbook.html"):
     df = pd.read_html(url, header=0, index_col=0, keep_default_na=True, skiprows=0)[0]
@@ -82,6 +86,12 @@ def getMultiTimeExp_fromWeb(expId, url = "https://people.lam.fr/madec.fabrice/pf
     df.rename(columns={"index": "experimentId"}, inplace=True)
     df = df.astype({"experimentId": int})
     df = df[df['experimentId'] == expId]
-    res = re.findall('exptime=\d+(?:,\d+)*', df.cmd_str.values[0])
-    res = re.findall('\d+', res[0])
-    return int(len(res))
+    res = re.findall('exptime=([^\s]+)', df.cmd_str.values[0])
+
+    try :
+        res = len(re.findall('\d+', res[0]))
+    except :
+        res = 1
+
+    return res
+
