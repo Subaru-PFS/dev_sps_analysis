@@ -89,7 +89,7 @@ def getPeakDataSep(image, cx, cy, EE=None, roi_size=30, mask_size=50,  seek_size
     mask = createSepMask(image.shape, cx, cy, mask_size=mask_size)
     obj = sep.extract(image, threshold, mask=mask)
     if len(obj) == 0 :
-        if True:
+        if doPlot:
             # plot background-subtracted image
             data = image * mask
             fig, ax = plt.subplots()
