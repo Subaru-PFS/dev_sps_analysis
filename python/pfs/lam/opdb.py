@@ -21,7 +21,7 @@ def fetch_sps_sequence(visit_set_id):
     inner join sps_visit on sps_exposure.pfs_visit_id=sps_visit.pfs_visit_id \
     inner join sps_camera on sps_exposure.sps_camera_id = sps_camera.sps_camera_id \
     left outer join sps_annotation on sps_exposure.pfs_visit_id=sps_annotation.pfs_visit_id \
-    WHERE sps_sequence.visit_set_id = {expID}"
+    WHERE sps_sequence.visit_set_id = {visit_set_id}"
     df = utils.fetch_query(opdb.OpDB.url, sql_all)
     return df
 
