@@ -256,6 +256,7 @@ def getSourcesUsed(image_file):
 
 def getArcLampForNist(lamp, fitsfile=None, strict=True):
     lamp = lamp if fitsfile is None else getSourcesUsed(fitsfile)
+    arclamp = "nan"
     if lamp == "neon" :
         arclamp = "Ne"
     elif lamp == "argon":
