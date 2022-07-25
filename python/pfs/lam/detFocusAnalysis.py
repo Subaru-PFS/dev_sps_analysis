@@ -183,6 +183,8 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                 thfoc[f'{criteria}_max'] = series[criteria].max()
 
                 thfoc['axis'] = index
+                thfoc['lamp'] = series.lamp.unique()[0]
+
 
                 #thfoc['visit'] = series.visit.unique()[0]
                 thfoc['experimentId'] = series.experimentId.unique()[0]
