@@ -15,13 +15,13 @@ import re
 #    return visit_min, visit_max
 
 def fetch_sps_sequence(visit_set_id):
-    sql_all = f"select sps_sequence.visit_set_id, sequence_type, name, comments,           sps_exposure.pfs_visit_id, cmd_str, exp_type, sps_module_id, arm, notes, data_flag,time_exp_start,status from sps_exposure \
+    sql_all = f"select iic_sequence.visit_set_id, sequence_type, name, comments,sps_exposure.pfs_visit_id, cmd_str, exp_type, sps_module_id, arm, notes, data_flag,time_exp_start,status from sps_exposure \
     inner join visit_set on sps_exposure.pfs_visit_id=visit_set.pfs_visit_id \
-    inner join sps_sequence on visit_set.visit_set_id=sps_sequence.visit_set_id \
+    inner join iic_sequence on visit_set.visit_set_id=iic_sequence.visit_set_id \
     inner join sps_visit on sps_exposure.pfs_visit_id=sps_visit.pfs_visit_id \
     inner join sps_camera on sps_exposure.sps_camera_id = sps_camera.sps_camera_id \
     left outer join sps_annotation on sps_exposure.pfs_visit_id=sps_annotation.pfs_visit_id \
-    WHERE sps_sequence.visit_set_id = {visit_set_id}"
+    WHERE iic_sequence.visit_set_id = {visit_set_id}"
     df = utils.fetch_query(opdb.OpDB.url, sql_all)
     return df
 
