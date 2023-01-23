@@ -82,11 +82,13 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
                 obj["cx"] = cx
                 obj["cy"] = cy
                 obj["peak"] = row["peak"]
-                obj["fiber"] = row["fiber"]              
+                obj["fiber"] = row["fiber"]
+                obj["wavelength"] = row["wavelength"]
+
                 objlist.append(obj)
             except Exception as e:
                 print(str(e), "cx:%i, cy:%i"%(cx,cy))
-                objlist.append(dict(peak=row["peak"], fiber=row["fiber"]))
+                objlist.append(dict(peak=row["wavelength"], fiber=row["fiber"]))
 
         mdata = pd.concat(objlist)
     else : # do it on the whole image so every peak
@@ -110,7 +112,7 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
         
 
     if doPlot :
-        plt_data = mdata[["peak", "fiber", "px", "py"]]
+        plt_data = mdata[["wavelength", "fiber", "px", "py"]]
         plt_data = plt_data.rename(columns={'px': 'X','py': 'Y'})
 
         plotRoiPeak(image, plt_data, roi_size, scale=scalePlot)
@@ -147,8 +149,9 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         maxPeakDist=maxPeakDist, maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux,\
         doPlot=doPlot, doBck=doBck, doEE=fullSep)
         dsep = dsep.add_prefix("sep_")
-        dsep = dsep.rename(columns={'sep_peak': 'peak','sep_fiber': 'fiber'})
-        data = data.merge(dsep, on=["peak","fiber"])
+        dsep = dsep.rename(columns={'sep_wavelength': 'wavelength','sep_fiber': 'fiber'})
+        
+        data = data.merge(dsep, on=["wavelength","fiber"])
 
         
     if imageInfo is not None:
