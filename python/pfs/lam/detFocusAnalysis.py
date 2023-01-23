@@ -248,7 +248,9 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                     if np.isnan(focus.focus.values) != True :
                         ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r", ls="--")
                         #if focus.width.values < width_limit:
-                        ax.vlines(**focus[focus.criteria == criteria].thFocus.vline)
+                        ax.vlines(**focus[focus.criteria == criteria].thFocus.vline, color="r")
+                        ax.vlines(150,ymin=0, ymax= 1, color="g", ls="--")
+                        
         if savePlot:
             if plot_title is None:
                 plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
