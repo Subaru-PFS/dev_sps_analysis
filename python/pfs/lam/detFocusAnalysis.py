@@ -414,10 +414,14 @@ def findInvMatrix(dfPlanes, tilt0=None, doPrint=False, saveMat=None):
     return inv_mat
 
 
-def getPlaneTilt(plane, doPrint=False):
+def getPlaneTilt(plane, doPrint=False, nir=False):
     # PFS detector size in px
-    x_size = 4096
-    y_size = 4176
+    if nir is True:
+        x_size = 4096
+        y_size = 4096       
+    else:
+        x_size = 4096
+        y_size = 4176
     pixel_size = 15. #microns
     
     tip = plane[0]/pixel_size
@@ -441,17 +445,21 @@ def getPlaneFocus(x,y, plane):
     
     return foc0 + (a*x + b*y) 
 
-def getPlaneDeFocus(plane, doPrint=False):
+def getPlaneDeFocus(plane, doPrint=False, nir=False):
     # PFS detector size in px
-    x_size = 4096
-    y_size = 4176    
+    if nir is True:
+        x_size = 4096
+        y_size = 4096       
+    else:
+        x_size = 4096
+        y_size = 4176
     defoc = getPlaneFocus((x_size/2),(y_size/2), plane)
     if doPrint:
-        print(f"defoc {defoc:.1f} microms")
+        print(f"bestFocus {defoc:.1f} microns")
     return defoc
 
-def getPlaneInfo(plane, doPrint=False):
-    return getPlaneTilt(plane, doPrint=doPrint), getPlaneDeFocus(plane, doPrint=doPrint)
+def getPlaneInfo(plane, doPrint=False, nir=False):
+    return getPlaneTilt(plane, doPrint=doPrint, nir=nir), getPlaneDeFocus(plane, doPrint=doPrint, nir=nir)
 
 
 
