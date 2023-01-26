@@ -14,7 +14,7 @@ def getTables(start):
 
 def getConf(start, actors=None, doPrint=True, dbname='archiver'):
     db = DatabaseManager('tron', 5432, '', dbname=dbname)
-    db.init()
+    db.connect()
 #    db = DatabaseManager('localhost', 5432, dbname=dbname)
 #    db = DatabaseManager('localhost', dbname=dbname )
 
@@ -41,7 +41,7 @@ def getConf(start, actors=None, doPrint=True, dbname='archiver'):
 def extractData(tables, start, end=False, interpolate=True, dbname='archiver'):
     datas = []
     db = DatabaseManager('tron', 5432, '', dbname=dbname)
-    db.init()
+    db.connect()
     d = getConf(start, doPrint=False, dbname=dbname)
 
     for i, device in enumerate(tables):
