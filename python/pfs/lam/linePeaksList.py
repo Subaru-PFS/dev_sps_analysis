@@ -81,7 +81,6 @@ def filterPeakList(peaksList, arm, lamps):
     """
 
     peaks = pd.read_csv(peaksList) if type(peaksList) is str else peaksList
-    peaks = pd.read_csv(peaksList)
     peaks = peaks[peaks.arm == arm]
     peaks = peaks[(peaks.element.str.contains('|'.join(re.findall('[A-Z][^A-Z]*', "".join(lamps)))))]
     
