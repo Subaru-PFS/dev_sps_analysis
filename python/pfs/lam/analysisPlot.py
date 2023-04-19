@@ -47,7 +47,9 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
         image = hdulist[1].data
     
     plist = pd.read_csv(peak_list) if type(peak_list) is str else peak_list
-
+    # 2023/02/03
+    # drop duplicates
+    plist = plist.drop_duplicates(subset=["fiber", "wavelength"])
 #    plist = plist.sort_values(["X","Y"], ascending=[True,False])
     # Use X,Y when it the list of peak, px,py otherwise
     ind_x = "px"
@@ -394,16 +396,20 @@ def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None,
         vmin = base[:-1].min()
     if vmax == -1 :
         vmax = base[:-1].max()
+    vl = 0.9
+    if par == "EE3":
+        vl = 0.5
+    
 
     plt.xlim(vmin,vmax)
   
     plt.ylabel("% of peak")
     plt.xlabel("EE5")
     plt.axhline(y=95, c="r")
-    plt.axvline(x=0.90, c="r")
+    plt.axvline(x=vl, c="r")
     plt.title(title)
     plt.gcf().set_facecolor('w')
-    plt.annotate("req",(0.9,95), color ="r" )
+    plt.annotate("req",(vl,95), color ="r" )
     if doSave:
         fig.patch.set_alpha(0.5)
         plt.savefig(savePlotFile+".png", bbox_inches = "tight" )
