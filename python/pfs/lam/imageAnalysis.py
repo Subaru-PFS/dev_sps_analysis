@@ -147,8 +147,10 @@ def estimateCOM(image, cx, cy, roi_size=30, doBck=True, nRows=5, seek_size=None)
     indy = int(cx)
     half = int(roi_size/2)
     
-    outer_data = selectRoi(image, cx, cy, roi_size=roi_size, doBck=doBck, nRows=nRows)            
-    y, x = center_of_mass(outer_data)  
+    outer_data = selectRoi(image, cx, cy, roi_size=roi_size, doBck=doBck, nRows=nRows) 
+    # center_of_mass does not support nan so replace with 0
+    
+    y, x = center_of_mass(outer_data)
 
     return indy - half + x + 0.5, indx - half + y + 0.5
 

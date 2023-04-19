@@ -7,12 +7,14 @@ from pfs.lam.fileHandling import *
 from pfs.lam.analysisPlot import plotRoiPeak
 from pfs.lam.opdb import get_Visit_Set_Id, get_Visit_Set_Id_fromWeb
 from pfs.lam.linePeaksList import removeClosePeak, removeFluxPeak
-
+from pfs.lam.nir import isRoiBad
 from pfs.lam.sep import *
 
 
+
 def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
-                    com=True, doPlot=False, scalePlot=False, doBck=False, doFit=False, doLSF=False):
+                    com=True, doPlot=False, scalePlot=False, doBck=False, doFit=False, doLSF=False,\
+                    calexpMask=None):
     """
     Calulate Ensquared Energy in EExEE px for all peak given in peak_list for a given image
     Returns a pandas Dataframe
@@ -41,11 +43,19 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
             obj["peak_exptime"] = row["exptime"] if "exptime" in plist.columns else np.nan
             obj["peak_lamp"] = row["lamp"] if "lamp" in plist.columns else np.nan
             obj["peak_dcb_wheel"] = row["dcb_wheel"] if "dcb_wheel" in plist.columns else np.nan
-
+            
+            # new 2023/01/26 add defect flag from DRP
+            if calexpMask is not None:
+                try:
+                    obj["DRP_flag"] = isRoiBad(calexpMask, obj["px"], obj["py"], roi_size=roi_size, getMaskName=False)
+                except Exception as e:
+                    print("DRP FLAG FAILED: ",str(e), "cx:%i, cy:%i"%(cx,cy))
+                
             objlist.append(obj)
         except Exception as e:
-            print(str(e), "cx:%i, cy:%i"%(cx,cy))
+            print("getPeakData FAILED: ",str(e), "cx:%i, cy:%i"%(cx,cy))
             objlist.append(dict(peak=row["peak"], fiber=row["fiber"], wavelength=wave))
+    #print(cx,cy)
 
     mdata = pd.DataFrame(objlist)
     if doPlot :
@@ -134,7 +144,8 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
                       doSep=False, fullSep=False,\
                       doPlot=False, doPrint=False, csv_path=None, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
-                      maxPeakFlux=40000, minPeakFlux=2000):
+                      maxPeakFlux=40000, minPeakFlux=2000,\
+                      calexpMask=None):
     """
     Calculate quality (EE, and sep info) for each peak from peaklist for a given image
     use getImagequality and getImageEncerclEnergy(sep) functions
@@ -142,7 +153,7 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
     Returns a pandas Dataframe
     """
     data = getImageQuality(image, peaksList, roi_size=roi_size, seek_size=seek_size, EE=EE, com=com, \
-                           doPlot=doPlot, doBck=doBck, doFit=doFit, doLSF=doLSF)
+                           doPlot=doPlot, doBck=doBck, doFit=doFit, doLSF=doLSF, calexpMask=calexpMask)
     if doSep:
         dsep = getImageEncerclEnergy(image, peaksList, roi_size=roi_size, EE=EE,\
         mask_size=mask_size, threshold= threshold, subpix = subpix ,\
@@ -227,7 +238,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                       com=True, doBck=True, doFit=True, doLSF=False, doSep=False,fullSep=False,\
                       doPlot=False, doPrint=False, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
-                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None):
+                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None, bkgId=None):
     """
     Calculate quality (EE, and sep info) for each peak from peaklist for a given visit defined in dataId dict
     butler is required to access the data
@@ -256,14 +267,28 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     imageInfo = dict(dataId)
     imageInfo.update(filename=calexfilePath)
     imageInfo.update(experimentId=experimentId)    
-
+    """
+    # Update peaklist centroid use known slit positions in the header
+    md = exp.getMetadata()
+    # values are good for SM2
+    pixOffsets = getSlitOffsets(md, pix2mm=[ 0.033914, 0.036498 ], verbose=True)
+    if type(peaksList) is str:
+        peaksList = filterPeakList(peaksList, dataId["arm"],butler.queryMetadata('raw', ['lamps'], dataId))
+    peaksList["X"] = peaksList["X"] + pixOffsets[0]
+    peaksList["Y"] = peaksList["Y"] + pixOffsets[1]    
+    """   
+    if bkgId is not None:
+        bkg = butler.get("calexp", visit=bkgId, arm=dataId["arm"], spectrograph=dataId["spectrograph"])
+        data = exp.image.array - bkg.image.array
+    else:
+        data = exp.image.array
     
-    data = getFullImageQuality(exp.image.array, peaksList, imageInfo=imageInfo,\
+    data = getFullImageQuality(data, peaksList, imageInfo=imageInfo,\
                       roi_size=roi_size, EE=EE, seek_size=seek_size,\
                       com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,fullSep=fullSep,\
                       doPlot=doPlot, doPrint=doPrint, \
                       mask_size=mask_size, threshold= threshold, subpix = subpix , maxPeakDist=maxPeakDist,\
-                      maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux)
+                      maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux, calexpMask=exp)
     
     now = datetime.now() # current date and time\n",
     date_time = now.strftime("%Y%m%dT%Hh%M")

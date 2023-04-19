@@ -322,11 +322,17 @@ def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
     
     return C
 
-def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, plot_title=None, coords=["px", "py", "relPos"], savePlot=False):
+def getBestPlane(data, order=1, doPlot=False, plot_path=None, exp=None, plot_title=None, coords=["px", "py", "relPos"], savePlot=False, nir=False):
     
     #coords = ["px", "py", "relPos"]
-    x_bound = [0,4096]
-    y_bound = [0,4176]
+    if nir is True:
+        x_size = 4096
+        y_size = 4096       
+    else:
+        x_size = 4096
+        y_size = 4176
+    x_bound = [0,x_size]
+    y_bound = [0,y_size]
     
 #    if exp is not None and plot_title is None:
 #        plot_title = f"Focus_plane_Exp{exp}.png"
@@ -430,8 +436,8 @@ def getPlaneTilt(plane, doPrint=False, nir=False):
     tip_mic = tip*x_size*pixel_size
     tilt_mic = tilt*y_size*pixel_size
     if doPrint:
-        print(f"Tip {tip:.3e} rad => {tip_mic:.1f} microns")
-        print(f"Tilt {tilt:.3e} rad => {tilt_mic:.1f} microns")
+        print(f"Spatial Tip {tip:.3e} rad => {tip_mic:.1f} microns")
+        print(f"Spectral Tilt {tilt:.3e} rad => {tilt_mic:.1f} microns")
     
     return tip, tilt, tip_mic, tilt_mic 
 
