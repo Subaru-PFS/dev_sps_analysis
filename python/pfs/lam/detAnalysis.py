@@ -280,6 +280,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     if bkgId is not None:
         bkg = butler.get("calexp", visit=bkgId, arm=dataId["arm"], spectrograph=dataId["spectrograph"])
         data = exp.image.array - bkg.image.array
+        print(f"Doing background substraction with {bkgId}")
     else:
         data = exp.image.array
     
