@@ -8,7 +8,7 @@ import matplotlib.gridspec as gridspec
 
 from pfs.lam.imageAnalysis import selectRoi, getRois
 
-def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax=None, verbose=False):
+def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax=None, verbose=False,title=None):
     indx = cy
     indy = cx
 
@@ -40,6 +40,8 @@ def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax
     
     fig.colorbar(im2, ax=ax2)
 #    plt.show()
+    if title is not None:
+        plt.title(title)
 
 def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=None, doSave=False):
     if type(image) is str:     
@@ -330,6 +332,8 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
         if waveband is not None:
             ax1.axhline(y=waveband[0], color='k', ls="--")
             ax1.axhline(y=waveband[1], color='k', ls="--")
+            ax1.annotate(f"{waveband[0]}nm", (339, waveband[0]+1), xycoords="data")
+            ax1.annotate(f"{waveband[1]}nm", (339, waveband[1]+1), xycoords="data")
 
         dframe[hist].plot.hist(ax=ax2, bins=20)
         val = 0.5 if par == "EE3" else 0.9
@@ -341,7 +345,11 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
 
 
         if title is not(None):
-            fig.suptitle(title+"\n"+statEE)
+            if "EE" in par:
+                fig.suptitle(title+"\n"+statEE)
+            else:
+                fig.suptitle(title)
+
     else:
         fig = plt.figure(figsize=(10, 8))
 
@@ -371,7 +379,10 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
 
         plt.show()
         if title is not(None):
-            fig.suptitle(title+"\n"+statEE)
+            if "EE" in par:
+                fig.suptitle(title+"\n"+statEE)
+            else:
+                fig.suptitle(title)
           
     if doSave:
         fig.patch.set_alpha(0.5)
