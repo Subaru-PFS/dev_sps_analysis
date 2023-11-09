@@ -410,12 +410,13 @@ def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None,
     vl = 0.9
     if par == "EE3":
         vl = 0.5
+        vmin = 0.45
     
 
     plt.xlim(vmin,vmax)
   
     plt.ylabel("% of peak")
-    plt.xlabel("EE5")
+    plt.xlabel(par)
     plt.axhline(y=95, c="r")
     plt.axvline(x=vl, c="r")
     plt.title(title)

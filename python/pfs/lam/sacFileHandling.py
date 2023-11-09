@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from skimage.feature import register_translation
+#from skimage.feature import register_translation
 import pandas as pd
 from astropy.io import fits
 from datetime import datetime as dt
