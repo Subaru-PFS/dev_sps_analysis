@@ -36,10 +36,12 @@ def main():
     parser.add_argument("--drpPath", type=str, default="/data/drp",help="main drp folder")
     parser.add_argument("--repo", type=str, default="sps",help="drp repository")
     parser.add_argument("--roi_size", type=int, default=24,help="roi_size in px used to calculate the total flux")
-    parser.add_argument("--seek_size", type=int, default=60,help="distance in px where to seek a peak")
+    parser.add_argument("--seek_size", type=int, default=None,help="distance in px where to seek a peak")
     parser.add_argument("--doBck", action="store_true" ,default=True,help="local bck substraction. default=True")
     parser.add_argument("--roiPlot", action="store_true" ,default=True,help="save an roi plot. default=True")
     parser.add_argument("--plotPeaksFlux", action="store_true" ,default=True,help="save a peak flux plot. default=True")
+    parser.add_argument("--doFit", action="store_true" ,default=False,help="Do 2d gaussian fit. default=False")
+    parser.add_argument("--doLSF", action="store_true" ,default=False,help="Calculate LSF. default=False")
     
     args = parser.parse_args()
     
@@ -56,7 +58,8 @@ def main():
     doBck = args.doBck
     roiPlot = args.roiPlot
     plotPeaksFlux = args.plotPeaksFlux
-    
+    doFit = args.doFit
+    doLSF = args.doLSF
     
     com = True  # Center Of Mass
     head = 0
@@ -124,7 +127,7 @@ def main():
     if roiPlot:
         plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}"),raw=True,doSave=True)
 
-    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=False, doLSF=False,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=False, doPrint=doPrint)
+    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=False, doPrint=doPrint, experimentId=experimentId)
     if plotPeaksFlux:
         plotPeaksBrightness(df, doSave=True, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_fluxes_{'_'.join(lamps)}{exptime:.0f}s_lwh{lwh}"), plot_title=f"{cam}_{visit} - {'_'.join(lamps)} exptime {exptime}s lwh {lwh}")
 
