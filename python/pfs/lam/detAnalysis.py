@@ -123,8 +123,6 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
 
     if doPlot :
         plt_data = mdata[["wavelength", "fiber", "px", "py"]]
-        plt_data = plt_data.rename(columns={'px': 'X','py': 'Y'})
-
         plotRoiPeak(image, plt_data, roi_size, scale=scalePlot)
 
 
@@ -279,12 +277,12 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     """   
     if bkgId is not None:
         bkg = butler.get("calexp", visit=bkgId, arm=dataId["arm"], spectrograph=dataId["spectrograph"])
-        data = exp.image.array - bkg.image.array
+        image = exp.image.array - bkg.image.array
         print(f"Doing background substraction with {bkgId}")
     else:
-        data = exp.image.array
+        image = exp.image.array
     
-    data = getFullImageQuality(data, peaksList, imageInfo=imageInfo,\
+    data = getFullImageQuality(image, peaksList, imageInfo=imageInfo,\
                       roi_size=roi_size, EE=EE, seek_size=seek_size,\
                       com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,fullSep=fullSep,\
                       doPlot=doPlot, doPrint=doPrint, \
@@ -300,6 +298,10 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     data.to_csv(os.path.join(csv_path, csvName))
     if doPrint:
         print(os.path.join(csv_path, csvName))
+    if doPlot:
+        RoiPlotName = f"roiPlot_{cam}_Exp{experimentId}_{visit}_{date_time}"
+        RoiPlotTitle = f"roiPlot {cam.upper()} Exp{experimentId} - visitId {visit} - roi_size={roi_size}\n{date_time}"
+        plotRoiPeak(image, data, roi_size, savePlotFile=os.path.join(csv_path, RoiPlotName),raw=False,doSave=True, title=RoiPlotTitle)
 
     return data
 

@@ -125,9 +125,10 @@ def main():
     if not os.path.exists(csvPath):
         os.makedirs(csvPath)
     if roiPlot:
-        plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}"),raw=True,doSave=True)
+        RoiPlotTitle = f"Peaklist roiPlot {cam.upper()} Exp{experimentId} - visit{visit} - roi_size={roi_size}\n"
+        plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_rawPeak"),raw=True,doSave=True, title=RoiPlotTitle )
 
-    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=False, doPrint=doPrint, experimentId=experimentId)
+    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId)
     if plotPeaksFlux:
         plotPeaksBrightness(df, doSave=True, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_fluxes_{'_'.join(lamps)}{exptime:.0f}s_lwh{lwh}"), plot_title=f"{cam}_{visit} - {'_'.join(lamps)} exptime {exptime}s lwh {lwh}")
 

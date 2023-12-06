@@ -43,7 +43,7 @@ def plotOnePeak(image, cx,cy, roi_size=30, doBck=False, nRows=5, vmin=None, vmax
     if title is not None:
         plt.title(title)
 
-def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=None, doSave=False):
+def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=False, savePlotFile=None, doSave=False,title=None):
     if type(image) is str:     
         hdulist = fits.open(image, "readonly")
         image = hdulist[1].data
@@ -109,6 +109,8 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
             ax.set_frame_on(False)
 
     plt.gcf().set_facecolor('w')
+    if title is not None:
+        f.suptitle(title)
     if doSave:
         f.patch.set_alpha(0.5)
         plt.savefig(savePlotFile+f"_roi_all.png")
