@@ -12,6 +12,8 @@ from pfs.lam.sep import *
 from pfs.drp.stella.readLineList import ReadLineListTask, ReadLineListConfig
 from pfs.drp.stella.referenceLine import ReferenceLineStatus
 from pfs.datamodel.pfsConfig import *
+from pfs.drp.stella import DetectorMap
+
 
 
 def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
