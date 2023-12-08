@@ -9,7 +9,9 @@ from pfs.lam.opdb import get_Visit_Set_Id, get_Visit_Set_Id_fromWeb
 from pfs.lam.linePeaksList import removeClosePeak, removeFluxPeak
 from pfs.lam.nir import isRoiBad
 from pfs.lam.sep import *
-
+from pfs.drp.stella.readLineList import ReadLineListTask, ReadLineListConfig
+from pfs.drp.stella.referenceLine import ReferenceLineStatus
+from pfs.datamodel.pfsConfig import *
 
 
 def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
@@ -400,3 +402,86 @@ def VisitImageQualityToCsv(visit, \
         print(csv_path+csvName)
 
     return
+
+
+def ImageQualityDetMap(butler, dataId, detMap=None, fiberType="DCB", roi_size=20, EE=[3,5], \
+                       com=True, doPlot=False,doSavePlot=False, imgPath=None, scalePlot=False, doBck=False, doFit=False, doLSF=False, verbose=False, threshold=500):
+    """
+    Calulate Ensquared Energy in EExEE px for all LAM wavelength for a given visitId
+    detectorMap is used to get centroid
+    Returns a pandas Dataframe
+    """
+    exp = butler.get("calexp", dataId)
+    visit = dataId["visit"] 
+    cam = f"{dataId['arm']}{dataId['spectrograph']}"
+    
+    detMap = butler.get('detectorMap', dataId) if detMap is None else DetectorMap.readFits(detMap)
+    
+    pfsConfig = butler.get("pfsConfig", dataId).select(spectrograph=dataId['spectrograph'])
+    if fiberType == "ENGINEERING": 
+        pfsConfig = pfsConfig[pfsConfig.targetType == TargetType.ENGINEERING]
+    else:
+        pfsConfig = pfsConfig[pfsConfig.targetType == TargetType.DCB]
+
+    fiberIds = pfsConfig.fiberId[pfsConfig.spectrograph == dataId['spectrograph']]
+    
+    lines = ReadLineListTask().run(detectorMap=detMap, metadata=exp.getMetadata())
+    status = ReferenceLineStatus.LAM_FOCUS | ReferenceLineStatus.LAM_IMAGEQUALITY  # Selecting both kinds of LAM flags
+    select = (lines.status & status) != 0 
+    waves = lines[select].wavelength
+    
+    # get Informations on exposure
+    butler.getKeys('raw')
+    [lamps] = butler.queryMetadata('raw', ['lamps'], dataId) 
+    [exptime] = butler.queryMetadata('raw', ['exptime'], dataId)
+    exptime = round(exptime,1)
+    # DCB line Wheel hole size
+    lwh = exp.getMetadata().toDict()['W_AITLWH']
+
+    
+    objlist=[]
+    sep_objlist = []
+    for fiber in fiberIds:
+        for wave in waves:
+            if verbose:
+                print(f"fiber: {fiber}, wave: {wave}")
+            cx = detMap.findPoint(fiber, wave)[0]
+            cy = detMap.findPoint(fiber, wave)[1]
+
+            try:
+                obj = getPeakData(exp.image.array, cx,cy, EE=EE, roi_size=roi_size, seek_size=None, com=com, doBck=doBck, doFit=doFit, doLSF=doLSF)
+                obj["fiber"] = fiber
+                obj["wavelength"] = wave
+                obj["exptime"] = round(exptime,1)
+                obj["lamp"] = lamps
+                obj["dcb_wheel"] = lwh
+                objlist.append(obj)
+
+                sep_obj = getPeakDataSep2(exp.image.array, cx,cy, EE=EE, roi_size=roi_size, seek_size=None, \
+                                     doBck=doBck, doEE=False, threshold=threshold)
+                sep_obj["fiber"] = fiber
+                sep_obj["wavelength"] = wave
+                sep_objlist.append(sep_obj)
+            except Exception as e:
+                print("getPeakData FAILED: ",str(e), f"(cx,cy)")
+                objlist.append(dict(fiber=fiber, wavelength=wave))
+
+    mdata = pd.DataFrame(objlist)
+    dsep = pd.concat(sep_objlist)
+    dsep = dsep.add_prefix("sep_")
+    dsep = dsep.rename(columns={'sep_wavelength': 'wavelength','sep_fiber': 'fiber'})
+        
+    mdata = mdata.merge(dsep, on=["wavelength","fiber"])
+        
+    if doPlot:
+        now = datetime.now() # current date and time\n",
+        date_time = now.strftime("%Y%m%dT%Hh%M")
+        RoiPlotName = f"roiPlot_{cam}_{visit}_{date_time}"
+        RoiPlotTitle = f"{cam.upper()} - visitId {visit} \n roi_size={roi_size}  lamps={lamps} exptime={exptime}s lineWheel={lwh}\n{date_time}"
+        if doSavePlot:
+            imgPath = "." if imgPath is None else imgPath
+            if not os.path.exists(imgPath):
+                os.makedirs(imgPath)
+        plotRoiPeak(exp.image.array, mdata, roi_size, savePlotFile=os.path.join(imgPath, RoiPlotName),raw=False,doSave=doSavePlot, title=RoiPlotTitle)
+    return mdata
+
