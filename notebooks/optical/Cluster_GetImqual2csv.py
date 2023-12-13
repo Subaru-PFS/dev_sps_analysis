@@ -23,7 +23,86 @@ matplotlib.use('Agg')
 
 
 
-def main():
+def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF):
+    
+
+    
+    com = True  # Center Of Mass
+    head = 0
+    tail = 0
+    verbose = False
+    doPrint = False
+    arm = cam[0]
+    specId = int(cam[1])    
+
+  # get experimentId from visit to create CSV folder
+    if experimentId is None:
+#        try:
+    #            experimentId = Logbook.visitExperimentId(visit=visit)
+#                experimentId = get_Visit_Set_Id(visit)
+#        except:
+        try:
+            print(f"Try to get expId for visit={visit}")
+            experimentId = get_Visit_Set_Id_fromWeb(visit, url="http://133.40.164.16/sps-logs/index.html")
+            print(f"{experimentId} found for visit {visit}")
+        except:
+            experimentId = np.nan
+            raise(f"Unable to get experimentId from logbook for visit {visit}")
+
+    csvPath = os.path.join(outpath,f"sm{specId}",f"Exp{experimentId}",rerun,f"roi{roi_size}",f"doBck{doBck}")
+    if doPrint:
+        print(csvPath)
+        print(f'Start visit {visit} of {cam} with {peaklist}\n')
+
+    # start the butler 
+
+    repoRoot = f"{drpPath}/{repo}"
+    if doPrint:
+        print(f"drp base: {repoRoot}")
+        print(f"rerun {os.path.join(repoRoot,  'rerun', rerun)}")
+#    print(os.path.join(repoRoot, "CALIB"))
+
+    butler = dafPersist.Butler( os.path.join(repoRoot, "rerun", rerun)) #, calibRoot=os.path.join(repoRoot, "CALIB"))
+    #butler.getKeys('raw')
+
+    # define dataID
+
+    dataId = dict(arm=arm, spectrograph=specId)
+
+    dataId.update(visit=int(visit))
+
+
+    # get lamp used to filter the list of peaks
+    lamps = butler.queryMetadata('raw', ['lamps'], dataId) 
+    calExp = butler.get("calexp", visit=visit, arm=cam[0])
+    [exptime] = butler.queryMetadata('raw', ['exptime'], dataId)
+    # DCB line Wheel hole size
+    lwh = calExp.getMetadata().toDict()['W_AITLWH']
+
+    peaks = filterPeakList(peaklist, arm, lamps)
+
+    waves = peaks.wavelength.unique()
+    if doPrint:
+        print(waves)
+    # !!!!! Wave filter !!!!!!!
+    # filter wave if needed
+    #print("!!!!!!!!!!!!!!!!!!!!!!!")
+    #print(f"wave {waves[-1]} filtered")
+    #peaks = peaks[peaks.wavelength != waves[-1]]   
+
+    if not os.path.exists(csvPath):
+        os.makedirs(csvPath)
+    if roiPlot:
+        RoiPlotTitle = f"Peaklist roiPlot {cam.upper()} Exp{experimentId} - visit{visit} - roi_size={roi_size}\n"
+        plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_rawPeak"),raw=True,doSave=True, title=RoiPlotTitle )
+
+    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId)
+    if plotPeaksFlux:
+        plotPeaksBrightness(df, doSave=True, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_fluxes_{'_'.join(lamps)}{exptime:.0f}s_lwh{lwh}"), plot_title=f"{cam}_{visit} - {'_'.join(lamps)} exptime {exptime}s lwh {lwh}")
+
+
+if __name__ == "__main__":
+    start = time.time()
     
     parser = argparse.ArgumentParser(description="Cluster_GetImqual2csv.py argument parser")
     
@@ -61,81 +140,9 @@ def main():
     doFit = args.doFit
     doLSF = args.doLSF
     
-    com = True  # Center Of Mass
-    head = 0
-    tail = 0
-    verbose = False
-    doPrint = False
-    arm = cam[0]
-    specId = int(cam[1])    
-
-  # get experimentId from visit to create CSV folder
-    if experimentId is None:
-#        try:
-    #            experimentId = Logbook.visitExperimentId(visit=visit)
-#                experimentId = get_Visit_Set_Id(visit)
-#        except:
-        try:
-            print(f"Try to get expId for visit={visit}")
-            experimentId = get_Visit_Set_Id_fromWeb(visit)
-            print(f"{experimentId} found for visit {visit}")
-        except:
-            experimentId = np.nan
-            raise(f"Unable to get experimentId from logbook for visit {visit}")
-
-    csvPath = os.path.join(outpath,f"sm{specId}",f"Exp{experimentId}",rerun,f"roi{roi_size}",f"doBck{doBck}")
-    print(csvPath)
-    print(f'Start visit {visit} of {cam} with {peaklist}')
-    print(f"{drpPath}/{repo}/rerun/{rerun}")
-
-    # start the butler 
-
-    repoRoot = f"{drpPath}/{repo}"
-    print(repoRoot)
-    print(os.path.join(repoRoot,  "rerun", rerun))
-    print(os.path.join(repoRoot, "CALIB"))
-
-    butler = dafPersist.Butler( os.path.join(repoRoot, "rerun", rerun), calibRoot=os.path.join(repoRoot, "CALIB"))
-    #butler.getKeys('raw')
-
-    # define dataID
-
-    dataId = dict(arm=arm, spectrograph=specId)
-
-    dataId.update(visit=int(visit))
-
-
-    # get lamp used to filter the list of peaks
-    lamps = butler.queryMetadata('raw', ['lamps'], dataId) 
-    calExp = butler.get("calexp", visit=visit, arm=cam[0])
-    [exptime] = butler.queryMetadata('raw', ['exptime'], dataId)
-    # DCB line Wheel hole size
-    lwh = calExp.getMetadata().toDict()['W_AITLWH']
-
-    peaks = filterPeakList(peaklist, arm, lamps)
-
-    waves = peaks.wavelength.unique()
-    print(waves)
-    # !!!!! Wave filter !!!!!!!
-    # filter wave if needed
-    #print("!!!!!!!!!!!!!!!!!!!!!!!")
-    #print(f"wave {waves[-1]} filtered")
-    #peaks = peaks[peaks.wavelength != waves[-1]]   
-
-    if not os.path.exists(csvPath):
-        os.makedirs(csvPath)
-    if roiPlot:
-        RoiPlotTitle = f"Peaklist roiPlot {cam.upper()} Exp{experimentId} - visit{visit} - roi_size={roi_size}\n"
-        plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_rawPeak"),raw=True,doSave=True, title=RoiPlotTitle )
-
-    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId)
-    if plotPeaksFlux:
-        plotPeaksBrightness(df, doSave=True, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_fluxes_{'_'.join(lamps)}{exptime:.0f}s_lwh{lwh}"), plot_title=f"{cam}_{visit} - {'_'.join(lamps)} exptime {exptime}s lwh {lwh}")
-
-
-if __name__ == "__main__":
-    start = time.time()
-    main()
+    
+    main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF)
+    
     finish = time.time()
     elapsed = finish - start
     print(f"Time elapsed: {elapsed}")
