@@ -11,7 +11,7 @@ from scipy import interpolate
 from scipy.interpolate import interp1d
 import matplotlib.patches as patches
 from matplotlib.colors import LogNorm
-
+from pandas import option_context
 
 from astropy.modeling import models, fitting
 from astropy.stats import gaussian_sigma_to_fwhm
@@ -287,8 +287,10 @@ def neighbor_outlier_filter(df, column, thres, absolute=False):
     dfc = df.copy()
     dfc.loc[:,f"{column}_nbh_diff"] = dfc[column] - (dfc[column].shift(-1) + dfc[column].shift(1))/2 
     dfc[f"{column}_nbh_diff"].fillna(0, inplace=True)
-    dfc[f"{column}_nbh_diff"].iloc[0] = (dfc[column] - dfc[column].shift(-1)).iloc[0]
-    dfc[f"{column}_nbh_diff"].iloc[-1] = (dfc[column] - dfc[column].shift(1)).iloc[-1]
+    with option_context('mode.chained_assignment',None):
+        dfc[f"{column}_nbh_diff"].iloc[0] = (dfc[column] - dfc[column].shift(-1)).iloc[0]
+    with option_context('mode.chained_assignment',None):
+        dfc[f"{column}_nbh_diff"].iloc[-1] = (dfc[column] - dfc[column].shift(1)).iloc[-1]
     if absolute:
         dfc.loc[:,f"{column}_nbh_flag"] = (abs(dfc[f"{column}_nbh_diff"])<abs(thres))
     else:

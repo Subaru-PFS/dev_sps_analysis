@@ -67,7 +67,8 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
 
     listfiberstoplot = pd.DataFrame(plist.fiber.unique(), columns=["fiber"])
     
-    print("#Fiber= %d and #wavelength= %d"%(nbfiber, nbwave))
+    if verbose:
+        print("#Fiber= %d and #wavelength= %d"%(nbfiber, nbwave))
     f, axarr = plt.subplots(nbwave, nbfiber,  sharex='col', sharey='row',figsize=(12,8))
 #    print(axarr.shape)
     vmin=None
@@ -529,6 +530,7 @@ def plotThoughFocusData(piston_data, index="relPos", criterias=["EE5", "EE3", "2
             if savePlot:
                 if plot_title is None:
                     plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
+                print(f"write ThFocus plot png file: {plot_path+plot_title} \n")
                 plt.savefig(plot_path+plot_title)
 
 

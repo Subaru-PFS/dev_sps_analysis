@@ -254,6 +254,7 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
         if savePlot:
             if plot_title is None:
                 plot_title = f"{cam_info.upper()}_ExpId_{str(int(piston.experimentId.unique()[0]))}_{criteria}_thFocusPlot{date_info}.png"
+            print(f"\n write ThFocus plot png file: {plot_path+plot_title} \n")
             plt.savefig(plot_path+plot_title)
                     
     return thfoc_data
