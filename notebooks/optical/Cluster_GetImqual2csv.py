@@ -8,6 +8,9 @@ import sys
 import argparse
 import os
 
+# remove FutureWarning: Gen2 Butler has been deprecated (PfsButler). It will be removed sometime after v23.0 but no earlier than the end of 2021.
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from pfs.lam.opdb import *
 from pfs.lam.fileHandling import *
