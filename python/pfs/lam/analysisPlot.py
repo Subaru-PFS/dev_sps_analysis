@@ -406,11 +406,13 @@ def plotCumulativeImageQuality(dframe, par="EE5", savePlotFile=None, title=None,
     #plot the survival function
     plt.plot(base[:-1], 100*(len(criteria_values)-cumulative)/len(criteria_values), c='green')
     
+    vl = 0.9
+
     if vmin == -1 :
-        vmin = base[:-1].min()
+        # should not be below the requirement vl
+        vmin = min(base[:-1].min(), vl-0.005)
     if vmax == -1 :
         vmax = base[:-1].max()
-    vl = 0.9
     if par == "EE3":
         vl = 0.5
         vmin = 0.45
