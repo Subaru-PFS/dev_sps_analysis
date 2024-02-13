@@ -63,7 +63,8 @@ def getImageQuality(image, peak_list, roi_size=20, EE=[3,5], seek_size=None,\
 
     mdata = pd.DataFrame(objlist)
     if doPlot :
-        plotRoiPeak(image, mdata, roi_size, scale=scalePlot)
+        plt_data = mdata.rename(columns={'x': 'X','y': 'Y'})
+        plotRoiPeak(image, plt_data, roi_size, scale=scalePlot)
 
     return mdata
 

@@ -81,6 +81,7 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
             print(k,i)
             print(f"px {group[ind_x]}    py: {group[ind_y]}")
         #cut_data = image[int(indx-roi_size/2):int(indx+roi_size/2), int(indy-roi_size/2):int(indy+roi_size/2)]
+        if group[ind_x].isnull().bool() or group[ind_y].isnull().bool(): continue
         cut_data = selectRoi(image, group[ind_x], group[ind_y], roi_size=roi_size)
         if nbwave == 1 and nbfiber == 1:
             axarr.set_title(f"{str(fiber)}, {str(wave)}")
