@@ -437,7 +437,8 @@ def plotReqDetAlignAxe(detMap, specId=None, ax=None, simMap=None,  waves=None, f
             y = offset["y"]
             dx = offset["dx"]
             dy = offset["dy"]
-            ax.annotate(f"{fiber} {wave:.1f}nm  \n dx={dx:.1f}px dy={dy:.1f}px", (int(x), int(y)), xycoords="data")
+            #ax.annotate(f"{fiber} {wave:.1f}nm  \n dx={dx:.1f}px dy={dy:.1f}px", (int(x), int(y)-100), xycoords="data", fontsize=9)
+            ax.annotate(f"margin: x={np.minimum(x, 4096.-x):.1f}px \n y={np.minimum(y, 4096.-y):.1f}px", (int(x), int(y)-160), xycoords="data", fontsize=9)
             #print(f"{fiber} {wave:.1f}nm  dx={dx:.1f}px dy={dy:.1f}px ({int(x)},{int(y)}) xycoords='axes pixels'")
             
     absOffsets = getAbsOffsets(detMap, specId=specId, waves=waves)
