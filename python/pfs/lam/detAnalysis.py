@@ -289,7 +289,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     data = getFullImageQuality(image, peaksList, imageInfo=imageInfo,\
                       roi_size=roi_size, EE=EE, seek_size=seek_size,\
                       com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,fullSep=fullSep,\
-                      doPlot=doPlot, doPrint=doPrint, \
+                      doPlot=False, doPrint=doPrint, \
                       mask_size=mask_size, threshold= threshold, subpix = subpix , maxPeakDist=maxPeakDist,\
                       maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux, calexpMask=exp)
     
