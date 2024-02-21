@@ -19,12 +19,13 @@ matplotlib.use('Agg')
 
 
 
-def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, doBck, piston_index, filtered_waves):
+def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, doBck, piston_index, filtered_waves, filtered_fibers):
 
     dat = datetime.now().strftime("%Y-%m-%dT%Hh%M")
     print(dat)
 
     filtered_waves = filtered_waves if filtered_waves is None else np.array(filtered_waves)
+    filtered_fibers = filtered_fibers if filtered_fibers is None else np.array(filtered_fibers)
 
     
     repoRoot = f"{drpPath}/{repo}"
@@ -80,7 +81,9 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
     
     
     # filtering the data
-    
+
+           
+                
     
     if doNeighborFilter :
         tot = []
@@ -107,6 +110,17 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
                 filter_wave = waves[np.searchsorted(waves, wave)]
                 print(f"{filter_wave:.2f} filtered")
                 piston_filtered = piston_filtered[piston_filtered.wavelength != filter_wave]
+
+    # Remove a fibers if needed 
+    #
+    if filtered_fibers is not None:
+        print(filtered_fibers)
+        if filtered_fibers.size != 0:
+            for fib in filtered_fibers:
+                filter_fib = fibers[np.searchsorted(fibers, fib)]
+                print(f"fiber {filter_fib:.2f} filtered")
+                piston_filtered = piston_filtered[piston_filtered.fiber != filter_fib]
+                
     
     #
     # Fit
@@ -206,7 +220,8 @@ if __name__ == "__main__":
     parser.add_argument("--doBck", action="store_true" ,default=True,help="local bck substraction. default=True")
     parser.add_argument("--piston_index", type=str, default="motor1",help="index used for throughfocus analysis")
     parser.add_argument("--filtered_waves", type=float, nargs="+", default=[],help="waves to filtered")
-    
+    parser.add_argument("--filtered_fibers", type=float, nargs="+", default=[],help="fibers to filtered")
+   
 
     
     args = parser.parse_args()
@@ -223,10 +238,11 @@ if __name__ == "__main__":
     piston_index = args.piston_index
     filtered_waves = args.filtered_waves
     filtered_waves = filtered_waves if filtered_waves is None else np.array(filtered_waves)
-
+    filtered_fibers = args.filtered_fibers
+    filtered_fibers = filtered_fibers if filtered_fibers is None else np.array(filtered_fibers)
 
     
-    main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, doBck, piston_index, filtered_waves)
+    main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, doBck, piston_index, filtered_waves, filtered_fibers)
     finish = time.time()
     elapsed = finish - start
     print(f"Time elapsed: {elapsed}")
