@@ -26,7 +26,7 @@ matplotlib.use('Agg')
 
 
 
-def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF):
+def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF, detMap=None, fiberType="DCB"):
     
 
     
@@ -82,11 +82,14 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
     # DCB line Wheel hole size
     lwh = calExp.getMetadata().toDict()['W_AITLWH']
 
-    peaks = filterPeakList(peaklist, arm, lamps)
+    if peaklist is None:
+        peaks = None
+    else:
+        peaks = filterPeakList(peaklist, arm, lamps) if peaklist is not None else None
 
-    waves = peaks.wavelength.unique()
-    if doPrint:
-        print(waves)
+        waves = peaks.wavelength.unique()
+        if doPrint:
+            print(waves)
     # !!!!! Wave filter !!!!!!!
     # filter wave if needed
     #print("!!!!!!!!!!!!!!!!!!!!!!!")
@@ -95,11 +98,11 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
 
     if not os.path.exists(csvPath):
         os.makedirs(csvPath)
-    if roiPlot:
+    if roiPlot and (peaklist is not None):
         RoiPlotTitle = f"Peaklist roiPlot {cam.upper()} Exp{experimentId} - visit{visit} - roi_size={roi_size}\n"
         plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_rawPeak"),raw=True,doSave=True, title=RoiPlotTitle )
 
-    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId)
+    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId, detMap=detMap, fiberType=fiberType)
     if plotPeaksFlux:
         plotPeaksBrightness(df, doSave=True, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_fluxes_{'_'.join(lamps)}{exptime:.0f}s_lwh{lwh}"), plot_title=f"{cam}_{visit} - {'_'.join(lamps)} exptime {exptime}s lwh {lwh}")
 
@@ -124,7 +127,9 @@ if __name__ == "__main__":
     parser.add_argument("--plotPeaksFlux", action="store_true" ,default=True,help="save a peak flux plot. default=True")
     parser.add_argument("--doFit", action="store_true" ,default=False,help="Do 2d gaussian fit. default=False")
     parser.add_argument("--doLSF", action="store_true" ,default=False,help="Calculate LSF. default=False")
-    
+    parser.add_argument("--detMap", type=str, help="detectorMap filepath", default=None)
+    parser.add_argument("--fiberType", type=str, help="type of fiber to use", default="DCB")
+
     args = parser.parse_args()
     
     visit = args.visit
@@ -142,9 +147,10 @@ if __name__ == "__main__":
     plotPeaksFlux = args.plotPeaksFlux
     doFit = args.doFit
     doLSF = args.doLSF
+    detMap = args.detMap
+    fiberType = args.fiberType
     
-    
-    main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF)
+    main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF, detMap, fiberType)
     
     finish = time.time()
     elapsed = finish - start

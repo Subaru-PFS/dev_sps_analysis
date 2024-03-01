@@ -240,7 +240,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                       com=True, doBck=True, doFit=True, doLSF=False, doSep=False,fullSep=False,\
                       doPlot=False, doPrint=False, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
-                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None, bkgId=None):
+                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None, bkgId=None, detMap=None, fiberType="DCB"):
     """
     Calculate quality (EE, and sep info) for each peak from peaklist for a given visit defined in dataId dict
     butler is required to access the data
@@ -251,8 +251,6 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     
     """
     
-    exp = butler.get("calexp", dataId)
-    calexfilePath = butler.getUri("calexp", dataId)
     visit = dataId["visit"] 
     cam = f"{dataId['arm']}{dataId['spectrograph']}"
     if experimentId is None:
@@ -265,6 +263,10 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                 experimentId = np.nan
                 print(f"Unable to get experimentId from logbook for visit: {visit}")
                 raise(f"Unable to get experimentId from logbook for visit: {visit}")
+
+    
+    exp = butler.get("calexp", dataId)
+    calexfilePath = butler.getUri("calexp", dataId)
 
     imageInfo = dict(dataId)
     imageInfo.update(filename=calexfilePath)
@@ -285,13 +287,16 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
         print(f"Doing background substraction with {bkgId}")
     else:
         image = exp.image.array
-    
-    data = getFullImageQuality(image, peaksList, imageInfo=imageInfo,\
-                      roi_size=roi_size, EE=EE, seek_size=seek_size,\
-                      com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,fullSep=fullSep,\
-                      doPlot=False, doPrint=doPrint, \
-                      mask_size=mask_size, threshold= threshold, subpix = subpix , maxPeakDist=maxPeakDist,\
-                      maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux, calexpMask=exp)
+        
+    if peaksList is not None:
+        data = getFullImageQuality(image, peaksList, imageInfo=imageInfo,\
+                          roi_size=roi_size, EE=EE, seek_size=seek_size,\
+                          com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doSep=doSep,fullSep=fullSep,\
+                          doPlot=False, doPrint=doPrint, \
+                          mask_size=mask_size, threshold= threshold, subpix = subpix , maxPeakDist=maxPeakDist,\
+                          maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux, calexpMask=exp)
+    else:
+         data = ImageQualityDetMap(butler, dataId, detMap=detMap, fiberType=fiberType, EE=EE, roi_size=roi_size, com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doPlot=False, doSavePlot=False)
     
     now = datetime.now() # current date and time\n",
     date_time = now.strftime("%Y%m%dT%Hh%M")
@@ -474,6 +479,34 @@ def ImageQualityDetMap(butler, dataId, detMap=None, fiberType="DCB", roi_size=20
     dsep = dsep.rename(columns={'sep_wavelength': 'wavelength','sep_fiber': 'fiber'})
         
     mdata = mdata.merge(dsep, on=["wavelength","fiber"])
+    
+    mdata["visit"] = visit
+    mdata["motor1"] = exp.getMetadata().toDict()['W_XM1POS']
+    mdata["motor2"] = exp.getMetadata().toDict()['W_XM2POS']
+    mdata["motor3"] = exp.getMetadata().toDict()['W_XM3POS']
+    
+    mdata["fcaFocus"] = exp.getMetadata().toDict()['W_ENFCAX']
+    mdata["fcaY"] = exp.getMetadata().toDict()['W_ENFCAY']
+    mdata["fcaZ"] = exp.getMetadata().toDict()['W_ENFCAZ']    
+
+
+    mdata['ccdTemp'] = exp.getMetadata().toDict()['W_XTDET1']
+    mdata['detBoxTemp'] = exp.getMetadata().toDict()['W_XTDBOX']
+
+    mdata['cam'] = cam
+    #mdata['obsdate'] = exp.getMetadata().toDict()['DATE-AVG']
+    
+    try:
+        print(f"Try to get expId for visit={visit}")
+        experimentId = get_Visit_Set_Id_fromWeb(visit, url="http://133.40.164.16/sps-logs/index.html")
+        print(f"{experimentId} found for visit {visit}")
+    except:
+        experimentId = np.nan
+        raise(f"Unable to get experimentId from logbook for visit {visit}")
+    mdata['experimentId'] = experimentId
+
+    
+    
         
     if doPlot:
         now = datetime.now() # current date and time\n",
