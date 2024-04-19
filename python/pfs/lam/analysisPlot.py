@@ -274,7 +274,8 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
     '''
     
     '''
-    markers = {"Ne": "^", "Ar": "o", "HgAr" : "D", "Kr": "s", "Xe": "h" }
+    markers = {"Ne": "^", "Ar": "o", "HgAr" : "D", "Kr": "s", "Xe": "h",
+               "Ne_eng": "^", "Kr_eng": "s"}  # add IIS Ne
 
     x = dframe["fiber"]
     y = dframe["wavelength"]
@@ -308,6 +309,7 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
                        )
         ax1 = plt.subplot(gs[0,:2])
         ax2 = plt.subplot(gs[0,2])
+        
         for name, group in dframe.groupby("lamp"):
             group = group.copy()
             m = markers.get(name)

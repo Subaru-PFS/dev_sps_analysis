@@ -230,7 +230,10 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         
         data["exptime"] = round(getFitsKey(visitfilepath, 'exptime'),1)
         data["lamp"] = getArcLampForNist(None,fitsfile=visitfilepath, strict=False)
-        data["dcb_wheel"] = getFitsKey(visitfilepath, 'W_AITLWH')
+        try:
+            data["dcb_wheel"] = getFitsKey(visitfilepath, 'W_AITLWH')
+        except:
+            data["dcb_wheel"] = np.nan
         
     return data
 
@@ -297,7 +300,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                           maxPeakFlux=maxPeakFlux, minPeakFlux=minPeakFlux, calexpMask=exp)
     else:
          data = ImageQualityDetMap(butler, dataId, detMap=detMap, fiberType=fiberType, EE=EE, roi_size=roi_size, com=com, doBck=doBck, doFit=doFit, doLSF=doLSF, doPlot=False, doSavePlot=False)
-    
+
     now = datetime.now() # current date and time\n",
     date_time = now.strftime("%Y%m%dT%Hh%M")
 

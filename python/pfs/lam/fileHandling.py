@@ -235,7 +235,12 @@ def getSourcesUsed(image_file):
         krypton = "W_AITKRY",
         xenon = "W_AITXEN",
         deuterium = "W_AITDEU",
-        qth = "W_AITQTH"
+        qth = "W_AITQTH",
+        neon_eng = "W_ENINEO",
+        argon_eng = "W_ENIARG",
+        hgar_eng = "W_ENIHGA",
+        krypton_eng = "W_ENIKRY",
+        qth_eng = "W_ENIQTH"
         )
        
     listsource = []
@@ -257,16 +262,16 @@ def getSourcesUsed(image_file):
 def getArcLampForNist(lamp, fitsfile=None, strict=True):
     lamp = lamp if fitsfile is None else getSourcesUsed(fitsfile)
     arclamp = "nan"
-    if lamp == "neon" :
+    if lamp == "neon" or lamp == "neon_eng":
         arclamp = "Ne"
-    elif lamp == "argon":
+    elif lamp == "argon" or lamp == "neon_eng":
         arclamp = "Ar"
     elif lamp == "hgar":
         if strict :
             arclamp = "Hg | Ar"
         else:
             arclamp = "HgAr"
-    elif lamp == "krypton":
+    elif lamp == "krypton" or lamp =="Kr_eng":
         arclamp = "Kr"
     elif lamp == "xenon":
         arclamp = "Xe"

@@ -19,7 +19,7 @@ matplotlib.use('Agg')
 
 
 
-def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, doBck, piston_index, filtered_waves, filtered_fibers):
+def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, doBck, piston_index, filtered_waves, filtered_fibers, fiberType):
 
     dat = datetime.now().strftime("%Y-%m-%dT%Hh%M")
     print(dat)
@@ -47,6 +47,11 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
     doSave = True
     doSaveCsv = True
     
+    # Set EE3 for engineering fibers and EE5 as default
+    if fiberType == 'ENGINEERING':
+        ee = 'EE3'
+    else:
+        ee = 'EE5'
     
     files = []
     
@@ -88,7 +93,8 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
     if doNeighborFilter :
         tot = []
         for  group_name, series in piston_imdata.groupby(['wavelength','fiber']):
-            series = neighbor_outlier_filter(series, "EE5", thres_neighbor, absolute=True)
+            #series = neighbor_outlier_filter(series, "EE5", thres_neighbor, absolute=True)
+            series = neighbor_outlier_filter(series, ee, thres_neighbor, absolute=True)
             tot.append(series)
             piston_filtered = pd.concat(tot)
     
@@ -98,8 +104,11 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
         piston_filtered["sep_radius_x"]= np.sqrt(piston_filtered["sep_x2"])
         piston_filtered["sep_radius_y"]= np.sqrt(piston_filtered["sep_y2"])
         piston_filtered["sep_radius_xy"]= piston_filtered.apply(lambda x: np.mean([x["sep_radius_x"],x["sep_radius_y"]]) , axis=1)
-    
-    piston_filtered = piston_filtered[piston_filtered.EE5_nbh_flag]
+
+    if fiberType == 'ENGINEERING':
+        piston_filtered = piston_filtered[piston_filtered.EE3_nbh_flag]
+    else:
+        piston_filtered = piston_filtered[piston_filtered.EE5_nbh_flag]
     
     # Remove a wavelenght if needed 
     #
@@ -132,6 +141,11 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
         vmin = 0.75
         vmax = 1
         extra_title = f"_bounds_086_163_err_max_{piston_index}"
+    elif criteria == "EE3":
+        bounds = [(-100, 0.6, 100), (400, 1, 163)]
+        vmin = 0.4
+        vmax = 1
+        extra_title = f"_bounds_070_163_err_max_{piston_index}"
     else :
         bounds = None
         vmin = -1
@@ -139,12 +153,14 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
         extra_title = f"_{piston_index}"
 
     
-    thfoc_data = getAllBestFocus(piston_filtered.dropna(subset=['EE5']), criterias=['EE5'], index=piston_index, doPlot=True, savePlot=doSave, plot_path=csvPath, plot_title=f"Exp{experimentId}_thfocus_fit{extra_title}_{dat}",\
+    # thfoc_data = getAllBestFocus(piston_filtered.dropna(subset=['EE5']), criterias=['EE5'], index=piston_index, doPlot=True, savePlot=doSave, plot_path=csvPath, plot_title=f"Exp{experimentId}_thfocus_fit{extra_title}_{dat}",\
+    #                          bounds=bounds)
+    thfoc_data = getAllBestFocus(piston_filtered.dropna(subset=[ee]), criterias=[ee], index=piston_index, doPlot=True, savePlot=doSave, plot_path=csvPath, plot_title=f"Exp{experimentId}_thfocus_fit{extra_title}_{dat}",\
                              bounds=bounds)
     # save in CSV
     thfoc_data.to_csv(f"{csvPath}imquality_{cam}_Exp{experimentId}_doBck{str(doBck)}_piston_thfocfitdata{extra_title}_{dat}.csv")
     
-    # plot Estimation of criteria EE5
+    # plot Estimation of criteria EE5 or EE3 (for engineering fibers)
     criteria_max = f"{criteria}_max"
     plot_title = f"{cam} Exp{experimentId} {criteria} thFocus estimation doBck{str(doBck)}"
     plot_file = f"{csvPath}{cam}_Exp{experimentId}_{criteria}_thFocusEstimation_doBck{str(doBck)}_{extra_title}"
@@ -156,7 +172,8 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
     
 
     # Best Plane
-    piston_plane = getBestPlane(thfoc_data[thfoc_data.criteria == "EE5"].dropna(), coords=["px", "py", "focus"], order=1, doPlot=True, exp=experimentId, plot_path=dataPath, plot_title=f"Focus3DPlane_{cam}_Exp{experimentId}_{dat}", savePlot=doSave)
+    #piston_plane = getBestPlane(thfoc_data[thfoc_data.criteria == "EE5"].dropna(), coords=["px", "py", "focus"], order=1, doPlot=True, exp=experimentId, plot_path=dataPath, plot_title=f"Focus3DPlane_{cam}_Exp{experimentId}_{dat}", savePlot=doSave)
+    piston_plane = getBestPlane(thfoc_data[thfoc_data.criteria == ee].dropna(), coords=["px", "py", "focus"], order=1, doPlot=True, exp=experimentId, plot_path=dataPath, plot_title=f"Focus3DPlane_{cam}_Exp{experimentId}_{dat}", savePlot=doSave)
 
     txtfile = f"SM1_{cam.upper()}_BestFocusPlane_Exp{experimentId}_doBck{str(doBck)}_{criteria}{extra_title}_{dat}.dat"
 
@@ -196,10 +213,17 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
     title_suffix = f"a={foc[0]:.2f} b={foc[1]:.2f} c={foc[2]:.2f} microns"
     title_suffix += f"- DetBox {detBoxTemp_mean:.1f}K - ccdTemp {ccdTemp_mean:.1f}K - FCA Focus {fca_focus:.1f}mm \n"
     title_suffix += f"Tip {tip:.3e} rad => {tip_mic:.1f}µm -- Tilt {tilt:.3e} rad => {tilt_mic:.1f}µm -- Center focus {defocus:.1f}µm"
-    plot_groups(piston_filtered.sort_values("motor1")[piston_filtered.EE5_nbh_flag], experimentId, dataPath, plot_prefix=plot_prefix, title_suffix=title_suffix,\
-                col="fiber", hue="wavelength", criteria=criteria, doSave=doSave, verbose=True)
-    plot_groups(piston_filtered.sort_values("motor1")[piston_filtered.EE5_nbh_flag], experimentId, dataPath, plot_prefix=plot_prefix, title_suffix=title_suffix,\
-                col="wavelength", hue="fiber", criteria=criteria, doSave=doSave)
+    
+    if fiberType == 'ENGINEERING':
+        plot_groups(piston_filtered.sort_values("motor1")[piston_filtered.EE3_nbh_flag], experimentId, dataPath, plot_prefix=plot_prefix, title_suffix=title_suffix,\
+                    col="fiber", hue="wavelength", criteria=criteria, doSave=doSave, verbose=True)
+        plot_groups(piston_filtered.sort_values("motor1")[piston_filtered.EE3_nbh_flag], experimentId, dataPath, plot_prefix=plot_prefix, title_suffix=title_suffix,\
+                    col="wavelength", hue="fiber", criteria=criteria, doSave=doSave)
+    else:
+        plot_groups(piston_filtered.sort_values("motor1")[piston_filtered.EE5_nbh_flag], experimentId, dataPath, plot_prefix=plot_prefix, title_suffix=title_suffix,\
+                    col="fiber", hue="wavelength", criteria=criteria, doSave=doSave, verbose=True)
+        plot_groups(piston_filtered.sort_values("motor1")[piston_filtered.EE5_nbh_flag], experimentId, dataPath, plot_prefix=plot_prefix, title_suffix=title_suffix,\
+                    col="wavelength", hue="fiber", criteria=criteria, doSave=doSave)
 
     
     
