@@ -220,6 +220,9 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
         data['fcaZ'] = fcaz
 
         ccdTemp = np.float(getFitsKey(visitfilepath, 'W_XTDET1', doRaise=False))
+        # value looks invalid since at some point.
+        if ccdTemp == -9998.0:
+            ccdTemp = np.float(getFitsKey(visitfilepath, 'W_XTMP12', doRaise=False))
         data['ccdTemp'] = ccdTemp
         detBoxTemp = np.float(getFitsKey(visitfilepath, 'W_XTDBOX', doRaise=False))
         data['detBoxTemp'] = detBoxTemp
