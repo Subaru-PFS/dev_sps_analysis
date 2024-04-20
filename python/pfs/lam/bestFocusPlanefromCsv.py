@@ -56,16 +56,19 @@ def main(experimentId, cam, rerun, criteria, basePath, drpPath, repo, roi_size, 
     files = []
     
 
-    csvPath = os.path.join(basePath,"Exp"+str(experimentId)+"/"+rerun+"_roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
-    if not os.path.exists(csvPath):
-        csvPath = os.path.join(basePath,f"sm{cam[1]}","Exp"+str(experimentId)+"/"+rerun+"/"+"roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
+    for expId in experimentId:
+        #csvPath = os.path.join(basePath,"Exp"+str(experimentId)+"/"+rerun+"_roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
+        csvPath = os.path.join(basePath,"Exp"+str(expId)+"/"+rerun+"_roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
+        if not os.path.exists(csvPath):
+            #csvPath = os.path.join(basePath,f"sm{cam[1]}","Exp"+str(experimentId)+"/"+rerun+"/"+"roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
+            csvPath = os.path.join(basePath,f"sm{cam[1]}","Exp"+str(expId)+"/"+rerun+"/"+"roi"+str(roi_size)+"/doBck"+str(doBck)+"/"+extra)
 
-    dataPath = csvPath
-    print(dataPath)
+        dataPath = csvPath
+        print(dataPath)
 
-    searchFile = f"{csvPath}Imquality_{cam}_Exp{experimentId}*"
-    print("\n"+searchFile+"\n")
-    files.extend(glob.glob(searchFile))
+        searchFile = f"{csvPath}Imquality_{cam}_Exp{experimentId}*"
+        print("\n"+searchFile+"\n")
+        files.extend(glob.glob(searchFile))
 
     if verbose:
         print(*files, sep="\n")

@@ -264,14 +264,14 @@ def getArcLampForNist(lamp, fitsfile=None, strict=True):
     arclamp = "nan"
     if lamp == "neon" or lamp == "neon_eng":
         arclamp = "Ne"
-    elif lamp == "argon" or lamp == "neon_eng":
+    elif lamp == "argon" or lamp == "argon_eng":
         arclamp = "Ar"
     elif lamp == "hgar":
         if strict :
             arclamp = "Hg | Ar"
         else:
             arclamp = "HgAr"
-    elif lamp == "krypton" or lamp =="Kr_eng":
+    elif lamp == "krypton" or lamp =="krypton_eng":
         arclamp = "Kr"
     elif lamp == "xenon":
         arclamp = "Xe"
