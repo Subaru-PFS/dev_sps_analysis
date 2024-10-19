@@ -54,11 +54,17 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
     plist = plist.drop_duplicates(subset=["fiber", "wavelength"])
 #    plist = plist.sort_values(["X","Y"], ascending=[True,False])
     # Use X,Y when it the list of peak, px,py otherwise
-    ind_x = "px"
-    ind_y = "py"
     if raw :
         ind_x = "X"
         ind_y = "Y"        
+    else :
+        # 2024/08
+        # drop non-measured point which has cx = nan
+        #print(plist.columns)
+        plist = plist[~((plist.px.isnull())|(plist.py.isnull()))]
+        ind_x = "px"
+        ind_y = "py"
+
     
     nbfiber = len(plist.fiber.unique())
     nbwave = len(plist.wavelength.unique())

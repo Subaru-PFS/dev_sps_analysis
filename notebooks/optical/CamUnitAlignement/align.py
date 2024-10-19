@@ -437,7 +437,6 @@ def plotReqDetAlignAxe(detMap, specId=None, ax=None, simMap=None,  waves=None, f
             y = offset["y"]
             dx = offset["dx"]
             dy = offset["dy"]
-            ax.annotate(f"{fiber} {wave:.1f}nm  \n dx={dx:.1f}px dy={dy:.1f}px", (int(x), int(y)), xycoords="data")
             #print(f"{fiber} {wave:.1f}nm  dx={dx:.1f}px dy={dy:.1f}px ({int(x)},{int(y)}) xycoords='axes pixels'")
             
     absOffsets = getAbsOffsets(detMap, specId=specId, waves=waves)
@@ -446,12 +445,17 @@ def plotReqDetAlignAxe(detMap, specId=None, ax=None, simMap=None,  waves=None, f
         wave = offset["wave"]
         x = offset["x"]
         y = offset["y"]
-        dx = offset["dx"]*pix_size
-        dy = offset["dy"]*pix_size
+        dx = offset["dx"]
+        dy = offset["dy"]
+        mx = np.min((x-0, detMap.getBBox().width-x))
+        my = np.min((y-0, detMap.getBBox().height-y))
+        ax.annotate(f"margin: x {mx:.1f}px, \n  y {my:.1f}px", (int(x), int(y)-5), xycoords="data", size=8)
+        ax.annotate(f"{fiber} {wave:.1f}nm  \n dx={dx:.1f}px \n dy={dy:.1f}px", (int(x), int(y)+120), size=9,
+                    xycoords="data", annotation_clip=False)
         #arrow = mpatches.FancyArrowPatch(offset["limit"], (x, y),
         #                     mutation_scale=1)
         #ax.add_patch(arrow)
-        ax.annotate(f"{fiber} {wave:.1f}nm  \n dx={dx:.0f}µm \n dy={dy:.0f}µm", (int(x), int(y)), xycoords="data")    
+        #ax.annotate(f"{fiber} {wave:.1f}nm  \n dx={dx:.0f}µm \n dy={dy:.0f}µm", (int(x), int(y)), xycoords="data")    
 
     ax.annotate(dMapInfo["CALIB_ID"], (0.2,0.02), xycoords="figure fraction")
     out = plt.title(f"{cam.upper()} centering - detectorMap {detMapvisitId}", pad=20)

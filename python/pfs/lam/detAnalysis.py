@@ -102,7 +102,8 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
                 objlist.append(obj)
             except Exception as e:
                 print(str(e), "cx:%i, cy:%i"%(cx,cy))
-                objlist.append(dict(peak=row["wavelength"], fiber=row["fiber"]))
+                #objlist.append(dict(peak=row["wavelength"], fiber=row["fiber"]))
+                #objlist.append(dict(wavelength=row["wavelength"], fiber=row["fiber"]))
 
         mdata = pd.concat(objlist)
     else : # do it on the whole image so every peak
