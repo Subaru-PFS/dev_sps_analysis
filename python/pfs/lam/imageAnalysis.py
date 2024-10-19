@@ -46,6 +46,7 @@ class FitGauss1D(pd.DataFrame):
 
 
 def fitgauss1D(x, y):
+    print(f'{x} and {y}')
     offset = np.median(y)
     fy = y-offset
     amp = np.max(fy)

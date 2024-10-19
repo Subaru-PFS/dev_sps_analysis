@@ -54,11 +54,17 @@ def plotRoiPeak(image, peak_list, roi_size=20, raw=False, scale=True, verbose=Fa
     plist = plist.drop_duplicates(subset=["fiber", "wavelength"])
 #    plist = plist.sort_values(["X","Y"], ascending=[True,False])
     # Use X,Y when it the list of peak, px,py otherwise
-    ind_x = "px"
-    ind_y = "py"
     if raw :
         ind_x = "X"
         ind_y = "Y"        
+    else :
+        # 2024/08
+        # drop non-measured point which has cx = nan
+        #print(plist.columns)
+        plist = plist[~((plist.px.isnull())|(plist.py.isnull()))]
+        ind_x = "px"
+        ind_y = "py"
+
     
     nbfiber = len(plist.fiber.unique())
     nbwave = len(plist.wavelength.unique())
@@ -274,7 +280,8 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
     '''
     
     '''
-    markers = {"Ne": "^", "Ar": "o", "HgAr" : "D", "Kr": "s", "Xe": "h" }
+    markers = {"Ne": "^", "Ar": "o", "HgAr" : "D", "Kr": "s", "Xe": "h",
+               "Ne_eng": "^", "Kr_eng": "s"}  # add IIS Ne
 
     x = dframe["fiber"]
     y = dframe["wavelength"]
@@ -308,6 +315,7 @@ def plotImageQualityScatterFiberWave(dframe, par="EE3", vmin=-1,vmax=-1, hist=No
                        )
         ax1 = plt.subplot(gs[0,:2])
         ax2 = plt.subplot(gs[0,2])
+        
         for name, group in dframe.groupby("lamp"):
             group = group.copy()
             m = markers.get(name)

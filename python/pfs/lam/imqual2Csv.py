@@ -26,7 +26,7 @@ matplotlib.use('Agg')
 
 
 
-def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF, detMap=None, fiberType="DCB"):
+def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF, doPrint, detMap=None, fiberType="DCB"):
     
 
     
@@ -34,7 +34,7 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
     head = 0
     tail = 0
     verbose = False
-    doPrint = False
+    doPrint = doPrint
     arm = cam[0]
     specId = int(cam[1])    
 
@@ -77,10 +77,18 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
 
     # get lamp used to filter the list of peaks
     lamps = butler.queryMetadata('raw', ['lamps'], dataId) 
-    calExp = butler.get("calexp", visit=visit, arm=cam[0])
+    # IIS lamp name has "_eng"
+    if fiberType == "ENGINEERING":
+        lamps = [l.replace('_eng', '') for l in lamps]
+    
+    #calExp = butler.get("calexp", visit=visit, arm=cam[0])
+    calExp = butler.get("calexp", dataId)
     [exptime] = butler.queryMetadata('raw', ['exptime'], dataId)
     # DCB line Wheel hole size
-    lwh = calExp.getMetadata().toDict()['W_AITLWH']
+    if fiberType == 'DCB':
+        lwh = calExp.getMetadata().toDict()['W_AITLWH']
+    else:
+        lwh = None
 
     if peaklist is None:
         peaks = None
