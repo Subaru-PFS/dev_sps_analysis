@@ -19,14 +19,17 @@ from pfs.lam.detAnalysis import *
 from pfs.lam.linePeaksList import filterPeakList
 from pfs.lam.analysisPlot import plotRoiPeak, plotPeaksBrightness
 
-import lsst.daf.persistence as dafPersist
+try:
+    from lsst.daf.butler import Butler
+except:
+    import lsst.daf.persistence as dafPersist
+from lsst.obs.pfs.utils import getLamps
 
 import matplotlib
 matplotlib.use('Agg')
 
 
-
-def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF, doPrint, detMap=None, fiberType="DCB"):
+def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_size, seek_size, doBck, roiPlot, plotPeaksFlux, doFit, doLSF, doPrint, detMap=None, fiberType="DCB", drpVer='gen2'):
     
 
     
@@ -53,37 +56,62 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
             raise(f"Unable to get experimentId from logbook for visit {visit}")
 
     csvPath = os.path.join(outpath,f"sm{specId}",f"Exp{experimentId}",rerun,f"roi{roi_size}",f"doBck{doBck}")
+    
     if doPrint:
         print(csvPath)
         print(f'Start visit {visit} of {cam} with {peaklist}\n')
 
     # start the butler 
 
-    repoRoot = f"{drpPath}/{repo}"
-    if doPrint:
-        print(f"drp base: {repoRoot}")
-        print(f"rerun {os.path.join(repoRoot,  'rerun', rerun)}")
-#    print(os.path.join(repoRoot, "CALIB"))
+    if drpVer=='gen2':
+        repoRoot = f"{drpPath}/{repo}"
+        if doPrint:
+            print(f"drp base: {repoRoot}")
+            print(f"rerun {os.path.join(repoRoot,  'rerun', rerun)}")
+        #    print(os.path.join(repoRoot, "CALIB"))
 
-    butler = dafPersist.Butler( os.path.join(repoRoot, "rerun", rerun)) #, calibRoot=os.path.join(repoRoot, "CALIB"))
-    #butler.getKeys('raw')
-
+        butler = dafPersist.Butler( os.path.join(repoRoot, "rerun", rerun)) #, calibRoot=os.path.join(repoRoot, "CALIB"))
+        #butler.getKeys('raw')
+    elif drpVer=='gen3' or 'gen3_old':
+        collections = [c for c in list(Butler(drpPath).registry.queryCollections()) if c.startswith(rerun)]
+        if doPrint:
+            print(f"drp datastore: {drpPath}")
+            print(f"collection from {rerun}: {len(collections)} entries")
+        butler = Butler(drpPath, collections=collections)
+    else:
+        print(f'I don\'t kow about {drpVer}')
+        return -1
+    
     # define dataID
 
     dataId = dict(arm=arm, spectrograph=specId)
 
-    dataId.update(visit=int(visit))
+    if drpVer=='gen2':
+        dataId.update(visit=int(visit))
+    elif drpVer=='gen3_old':
+        dataId.update(exposure=int(visit))
+    elif drpVer=='gen3':
+        dataId.update(visit=int(visit))
 
 
+    if drpVer=='gen2' or drpVer=='gen3':
+        #calExp = butler.get("calexp", visit=visit, arm=cam[0])
+        calExp = butler.get("calexp", dataId)
+        md = butler.get("calexp.metadata", dataId)
+    elif drpVer=='gen3_old':
+        calExp = butler.get("postISRCCD", dataId)
+        md = butler.get("postISRCCD.metadata", dataId)
+        
     # get lamp used to filter the list of peaks
-    lamps = butler.queryMetadata('raw', ['lamps'], dataId) 
+    #lamps = butler.queryMetadata('raw', ['lamps'], dataId) 
+    lamps = getLamps(md)
+    
     # IIS lamp name has "_eng"
     if fiberType == "ENGINEERING":
         lamps = [l.replace('_eng', '') for l in lamps]
     
-    #calExp = butler.get("calexp", visit=visit, arm=cam[0])
-    calExp = butler.get("calexp", dataId)
-    [exptime] = butler.queryMetadata('raw', ['exptime'], dataId)
+    #[exptime] = butler.queryMetadata('raw', ['exptime'], dataId)
+    [exptime] = [calExp.visitInfo.exposureTime]
     # DCB line Wheel hole size
     if fiberType == 'DCB':
         lwh = calExp.getMetadata().toDict()['W_AITLWH']
@@ -110,7 +138,7 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
         RoiPlotTitle = f"Peaklist roiPlot {cam.upper()} Exp{experimentId} - visit{visit} - roi_size={roi_size}\n"
         plotRoiPeak(calExp.image.array, peaks, roi_size=roi_size, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_rawPeak"),raw=True,doSave=True, title=RoiPlotTitle )
 
-    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId, detMap=detMap, fiberType=fiberType)
+    df = ImageQualityToCsv(butler, dataId, peaks, csv_path=csvPath, com=com, doBck=doBck, EE=[3,5],seek_size=seek_size,doFit=doFit, doLSF=doLSF,  doSep=True,mask_size=20, threshold= 50, subpix = 5 , maxPeakDist=80,maxPeakFlux=40000, minPeakFlux=2000,doPlot=roiPlot, doPrint=doPrint, experimentId=experimentId, detMap=detMap, fiberType=fiberType, drpVer=drpVer)
     if plotPeaksFlux:
         plotPeaksBrightness(df, doSave=True, savePlotFile=os.path.join(csvPath,f"{cam}_{visit}_fluxes_{'_'.join(lamps)}{exptime:.0f}s_lwh{lwh}"), plot_title=f"{cam}_{visit} - {'_'.join(lamps)} exptime {exptime}s lwh {lwh}")
 

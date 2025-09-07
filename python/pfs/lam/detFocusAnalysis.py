@@ -244,7 +244,8 @@ def getAllBestFocus(piston, index="relPos", criterias=["EE5", "EE3", "2ndM"], do
                     ax.set_title(f"{name[0]:.2f}, {name[1]}")
                     df.plot.scatter(x=index,y=criteria, ax=ax)
                     if criteria == "EE5" or criteria == "EE3":
-                        ax.set_ylim(0,1)                   
+                        ax.set_ylim(0,1)  
+                        #ax.set_xlim(90,210)  
                     if np.isnan(focus.focus.values) != True :
                         ax.plot(*focus[focus.criteria == criteria].thFocus.fitdata, "r", ls="--")
                         #if focus.width.values < width_limit:
@@ -302,7 +303,8 @@ def fit3dPlane(df, coords=["x","y","z"], order=1, x_bound=None, y_bound=None, \
     if doPlot:
     # plot points and fitted surface
         fig = plt.figure()
-        ax = fig.gca(projection='3d')
+        #ax = fig.gca(projection='3d')
+        ax = fig.add_subplot(projection = '3d')
         ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
         ax.scatter(x, y, z, c='r', s=50)
         plt.xlabel('X')

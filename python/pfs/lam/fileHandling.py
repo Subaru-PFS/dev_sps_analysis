@@ -209,7 +209,7 @@ def stackedImage(filelist, ind, duplicate, bck=False):
 def getFitsKey(filename, key, doRaise=True):
     hdulist = fits.open(filename, "readonly")
     prihdr = hdulist[0].header
-    
+
     try:
         return prihdr[key]
     except KeyError:
