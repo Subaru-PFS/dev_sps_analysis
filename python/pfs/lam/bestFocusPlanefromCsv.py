@@ -6,7 +6,7 @@ from pfs.lam.style import *
 from pfs.lam.analysisPlot import *
 from pfs.lam.misc import find_nearest
 
-import lsst.daf.persistence as dafPersist
+#import lsst.daf.persistence as dafPersist
 
 import glob
 import time, sys, os

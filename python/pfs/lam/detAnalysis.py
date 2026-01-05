@@ -81,7 +81,7 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
         hdulist = fits.open(image, "readonly")
         prihdr = hdulist[0].header
         image = hdulist[1].data
- 
+
     if peak_list is not None :
         plist = pd.read_csv(peak_list) if type(peak_list) is str else peak_list
         objlist=[]
@@ -125,7 +125,6 @@ def getImageEncerclEnergy(image, peak_list, roi_size=20, EE=[3,5], seek_size=Non
         mdata = df
         
         
-
     if doPlot :
         plt_data = mdata[["wavelength", "fiber", "px", "py"]]
         plotRoiPeak(image, plt_data, roi_size, scale=scalePlot)
@@ -169,7 +168,7 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
 
         
     if imageInfo is not None:
-        visitfilepath = imageInfo["filename"] 
+        visitfilepath = imageInfo["filename"]
         visit = imageInfo["visit"] 
         cam = f"{imageInfo['arm']}{imageInfo['spectrograph']}"
         if "experimentId" in imageInfo.keys():
@@ -196,36 +195,36 @@ def getFullImageQuality(image, peaksList, roi_size=16, seek_size=None, imageInfo
             data["peaklist"] = peaksList        
         
         if getFitsKey(visitfilepath, 'W_XM1POS', doRaise=False) is not np.nan :
-            data["xm1pos"] = np.float(getFitsKey(visitfilepath, 'W_XM1POS'))
-            data["xm2pos"] = np.float(getFitsKey(visitfilepath, 'W_XM2POS'))
-            data["xm3pos"] = np.float(getFitsKey(visitfilepath, 'W_XM3POS'))
+            #data["xm1pos"] = np.float(getFitsKey(visitfilepath, 'W_XM1POS'))
+            data["xm1pos"] = float(getFitsKey(visitfilepath, 'W_XM1POS'))
+            data["xm2pos"] = float(getFitsKey(visitfilepath, 'W_XM2POS'))
+            data["xm3pos"] = float(getFitsKey(visitfilepath, 'W_XM3POS'))
         else :
-            data["xm1pos"] = np.float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR1_MICRONS'))
-            data["xm2pos"] = np.float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR2_MICRONS'))
-            data["xm3pos"] = np.float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR3_MICRONS'))
+            data["xm1pos"] = float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR1_MICRONS'))
+            data["xm2pos"] = float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR2_MICRONS'))
+            data["xm3pos"] = float(getFitsKey(visitfilepath, 'HIERARCH W_XCU_MOTOR3_MICRONS'))
            
-        
         data["motor1"] = data["xm1pos"] 
         data["motor2"] = data["xm2pos"]
         data["motor3"] = data["xm3pos"]
 
-        fcax = np.float(getFitsKey(visitfilepath, 'W_ENFCAX', doRaise=False))
-        fcay = np.float(getFitsKey(visitfilepath, 'W_ENFCAY', doRaise=False))
-        fcaz = np.float(getFitsKey(visitfilepath, 'W_ENFCAZ', doRaise=False))
+        fcax = float(getFitsKey(visitfilepath, 'W_ENFCAX', doRaise=False))
+        fcay = float(getFitsKey(visitfilepath, 'W_ENFCAY', doRaise=False))
+        fcaz = float(getFitsKey(visitfilepath, 'W_ENFCAZ', doRaise=False))
 
         # OneChannel back compatiblity
-        fcax = np.float(getFitsKey(visitfilepath, 'HIERARCH W_FCA_FOCUS', doRaise=False)) if np.isnan(fcax) else fcax
+        fcax = float(getFitsKey(visitfilepath, 'HIERARCH W_FCA_FOCUS', doRaise=False)) if np.isnan(fcax) else fcax
         data['fcaFocus'] = fcax
         data['fcaX'] = fcax
         data['fcaY'] = fcay
         data['fcaZ'] = fcaz
 
-        ccdTemp = np.float(getFitsKey(visitfilepath, 'W_XTDET1', doRaise=False))
+        ccdTemp = float(getFitsKey(visitfilepath, 'W_XTDET1', doRaise=False))
         # value looks invalid since at some point.
         if ccdTemp == -9998.0:
-            ccdTemp = np.float(getFitsKey(visitfilepath, 'W_XTMP12', doRaise=False))
+            ccdTemp = float(getFitsKey(visitfilepath, 'W_XTMP12', doRaise=False))
         data['ccdTemp'] = ccdTemp
-        detBoxTemp = np.float(getFitsKey(visitfilepath, 'W_XTDBOX', doRaise=False))
+        detBoxTemp = float(getFitsKey(visitfilepath, 'W_XTDBOX', doRaise=False))
         data['detBoxTemp'] = detBoxTemp
 
         data['cam'] = cam
@@ -247,7 +246,8 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                       com=True, doBck=True, doFit=True, doLSF=False, doSep=False,fullSep=False,\
                       doPlot=False, doPrint=False, \
                       mask_size=50, threshold= 50, subpix = 5 , maxPeakDist=80,\
-                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None, bkgId=None, detMap=None, fiberType="DCB"):
+                      maxPeakFlux=40000, minPeakFlux=2000, experimentId=None, bkgId=None, detMap=None,
+                      fiberType='DCB', drpVer='gen2'):
     """
     Calculate quality (EE, and sep info) for each peak from peaklist for a given visit defined in dataId dict
     butler is required to access the data
@@ -257,8 +257,11 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     Returns a pandas Dataframe and write csv file 
     
     """
-    
-    visit = dataId["visit"] 
+
+    if drpVer=='gen3_old':
+        visit = dataId["exposure"] 
+    else:
+        visit = dataId["visit"] 
     cam = f"{dataId['arm']}{dataId['spectrograph']}"
     if experimentId is None:
         try:
@@ -272,12 +275,21 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
                 raise(f"Unable to get experimentId from logbook for visit: {visit}")
 
     
-    exp = butler.get("calexp", dataId)
-    calexfilePath = butler.getUri("calexp", dataId)
+    if drpVer=='gen3' or drpVer=='gen3_old' :
+        datatype = "postISRCCD"
+        exp = butler.get(datatype, dataId)
+        calexfilePath = butler.getURI(datatype, dataId).path
+    else:
+        datatype = "calexp"
+        exp = butler.get(datatype, dataId)
+        calexfilePath = butler.getUri(datatype, dataId)
+
 
     imageInfo = dict(dataId)
     imageInfo.update(filename=calexfilePath)
     imageInfo.update(experimentId=experimentId)    
+    if drpVer=='gen3':
+        imageInfo.update(visit=visit)    
     """
     # Update peaklist centroid use known slit positions in the header
     md = exp.getMetadata()
@@ -289,7 +301,7 @@ def ImageQualityToCsv(butler, dataId, peaksList, csv_path=".",\
     peaksList["Y"] = peaksList["Y"] + pixOffsets[1]    
     """   
     if bkgId is not None:
-        bkg = butler.get("calexp", visit=bkgId, arm=dataId["arm"], spectrograph=dataId["spectrograph"])
+        bkg = butler.get(datatype, visit=bkgId, arm=dataId["arm"], spectrograph=dataId["spectrograph"])
         image = exp.image.array - bkg.image.array
         print(f"Doing background substraction with {bkgId}")
     else:
