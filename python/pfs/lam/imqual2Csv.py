@@ -21,6 +21,7 @@ from pfs.lam.analysisPlot import plotRoiPeak, plotPeaksBrightness
 
 try:
     from lsst.daf.butler import Butler
+    from lsst.daf.butler import DatasetNotFoundError
 except:
     import lsst.daf.persistence as dafPersist
 from lsst.obs.pfs.utils import getLamps
@@ -96,8 +97,12 @@ def main(visit, peaklist, cam, rerun, experimentId, outpath, drpPath, repo, roi_
 
     if drpVer=='gen2' or drpVer=='gen3':
         #calExp = butler.get("calexp", visit=visit, arm=cam[0])
-        calExp = butler.get("calexp", dataId)
-        md = butler.get("calexp.metadata", dataId)
+        try:
+            calExp = butler.get("calexp", dataId)
+            md = butler.get("calexp.metadata", dataId)
+        except DatasetNotFoundError:
+            calExp = butler.get("postISRCCD", dataId)        
+            md = butler.get("postISRCCD.metadata", dataId)
     elif drpVer=='gen3_old':
         calExp = butler.get("postISRCCD", dataId)
         md = butler.get("postISRCCD.metadata", dataId)
