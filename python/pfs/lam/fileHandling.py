@@ -240,7 +240,14 @@ def getSourcesUsed(image_file):
         argon_eng = "W_ENIARG",
         hgar_eng = "W_ENIHGA",
         krypton_eng = "W_ENIKRY",
-        qth_eng = "W_ENIQTH"
+        qth_eng = "W_ENIQTH",
+        neon_eng2 = "W_IISNEO",
+        argon_eng2 = "W_IISARG",
+        hgar_eng2 = "W_IISHGA",
+        krypton_eng2 = "W_IISKRY",
+        hydrogen_eng2 = "W_IISHYD",
+        helium_eng2 = "W_IISHE",
+        qth_eng2 = "W_IISQTH"
         )
        
     listsource = []
@@ -262,20 +269,24 @@ def getSourcesUsed(image_file):
 def getArcLampForNist(lamp, fitsfile=None, strict=True):
     lamp = lamp if fitsfile is None else getSourcesUsed(fitsfile)
     arclamp = "nan"
-    if lamp == "neon" or lamp == "neon_eng":
+    if lamp == "neon" or lamp == "neon_eng" or lamp == "neon_eng2":
         arclamp = "Ne"
-    elif lamp == "argon" or lamp == "argon_eng":
+    elif lamp == "argon" or lamp == "argon_eng" or lamp == "argon_eng2":
         arclamp = "Ar"
-    elif lamp == "hgar":
+    elif lamp == "hgar" or lamp == "hgar_eng2":
         if strict :
             arclamp = "Hg | Ar"
         else:
             arclamp = "HgAr"
-    elif lamp == "krypton" or lamp =="krypton_eng":
+    elif lamp == "krypton" or lamp =="krypton_eng" or lamp =="krypton_eng2":
         arclamp = "Kr"
     elif lamp == "xenon":
         arclamp = "Xe"
-    
+    elif lamp == "hydrogen_eng2":
+        arclamp = "H"
+    elif lamp == "helium_eng2":
+        arclamp = "He"
+
     return arclamp
 
 
